@@ -9,7 +9,7 @@ fi
 tmux send-keys -t timesipooped:0 'vim .' C-m
 
 tmux new-window -t timesipooped:1 -n Server
-tmux send-keys -t timesipooped:1 'air cmd/main.go' C-m
+tmux send-keys -t timesipooped:1 'cd cmd && air' C-m
 
 tmux split-window -t timesipooped:1 -h
 tmux send-keys -t timesipooped:1 'npx live-server web -p 8080' C-m
