@@ -4,7 +4,20 @@ import (
 	// "encoding/json"
 	"log"
 	"net/http"
+	"os"
+
+	// todo remove on production
+	"github.com/joho/godotenv"
 )
+
+type OAuthConfig struct {
+	ClientId     string
+	ClientSecret string
+	RedirectURI  string
+	OauthURL     string
+	TokenURL     string
+	UserInfoURL  string
+}
 
 type PoopList struct {
 	p []string
@@ -49,6 +62,21 @@ func post(w http.ResponseWriter, req *http.Request) {
 	if req.Method != http.MethodGet {
 		w.WriteHeader(http.StatusBadRequest)
 	}
+}
+
+func newOAuthConfig() *OAuthConfig {
+	config := &OAuthConfig{}
+	err := godotenv.Load("../.env")
+	if err != nil {
+		panic(err)
+	}
+	config.ClientId = os.Getenv("CLIENT_ID")
+	config.ClientSecret = os.Getenv("CLIENT_SECRET")
+	config.RedirectURI = "http://localhost:8080/callback"
+	config.OauthURL = "https://accounts.google.com/o/oauth2/auth"
+	config.TokenURL = "https://accounts.google.com/o/oauth2/token"
+	config.UserInfoURL = "https://www.googleapis.com/oauth2/v1/userinfo?alt=json"
+	return config
 }
 
 func main() {
