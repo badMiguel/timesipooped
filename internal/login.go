@@ -19,13 +19,13 @@ type OAuthConfig struct {
 }
 
 type UserInfo struct {
-	Email          string `json:"email"`
-	Family_name    string `json:"family_name"`
-	Given_name     string `json:"given_name"`
-	Id             string `json:"id"`
-	Name           string `json:"name"`
-	Picture        string `json:"picture"`
-	Verified_email bool   `json:"verified_email"`
+	Email         string `json:"email"`
+	FamilyName    string `json:"family_name"`
+	GivenName     string `json:"given_name"`
+	Id            string `json:"id"`
+	Name          string `json:"name"`
+	Picture       string `json:"picture"`
+	VerifiedEmail bool   `json:"verified_email"`
 }
 
 func NewOAuthConfig() *OAuthConfig {
@@ -52,7 +52,7 @@ func HandleLogin(authConf *OAuthConfig) http.HandlerFunc {
 	}
 }
 
-func HandleCallback(authConf *OAuthConfig, userInfo *UserInfo) http.HandlerFunc {
+func HandleCallback(authConf *OAuthConfig, userInfo map[string]*UserInfo) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		code := r.URL.Query().Get("code")
 		if code == "" {
@@ -80,7 +80,10 @@ func HandleCallback(authConf *OAuthConfig, userInfo *UserInfo) http.HandlerFunc 
 			return
 		}
 
-		accessToken := tokenData["access_token"].(string)
+		accessToken, ok := tokenData["access_token"].(string)
+		if !ok {
+			return
+		}
 
 		req, err := http.NewRequest("GET", authConf.UserInfoURL, nil)
 		if err != nil {
@@ -97,10 +100,16 @@ func HandleCallback(authConf *OAuthConfig, userInfo *UserInfo) http.HandlerFunc 
 		}
 		defer resp.Body.Close()
 
-		if err := json.NewDecoder(resp.Body).Decode(&userInfo); err != nil {
+		var info UserInfo
+		if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
 			log.Printf("Error decoding user info: %v\n", err)
 			http.Error(w, "Failed to decode user info", http.StatusInternalServerError)
 			return
 		}
+
+		userInfo[info.Id] = &info
+
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("Client logged in"))
 	}
 }
