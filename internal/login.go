@@ -49,6 +49,7 @@ func HandleLogin(authConf *OAuthConfig) http.HandlerFunc {
 			url.QueryEscape(authConf.RedirectURI),
 		)
 		http.Redirect(w, r, authUrl, http.StatusFound)
+		log.Println("Redirected to auth url")
 	}
 }
 
@@ -84,6 +85,7 @@ func HandleCallback(authConf *OAuthConfig, userInfo map[string]*UserInfo) http.H
 		if !ok {
 			return
 		}
+		log.Println("Successfully got access token")
 
 		req, err := http.NewRequest("GET", authConf.UserInfoURL, nil)
 		if err != nil {
@@ -106,7 +108,9 @@ func HandleCallback(authConf *OAuthConfig, userInfo map[string]*UserInfo) http.H
 			http.Error(w, "Failed to decode user info", http.StatusInternalServerError)
 			return
 		}
+		log.Println("User data received")
 
+        // IMPORTANT TODO MOVE THIS TO DB
 		userInfo[info.Id] = &info
 
 		w.WriteHeader(http.StatusOK)
