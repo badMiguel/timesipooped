@@ -6,15 +6,18 @@ import (
 	"net/http"
 	"os"
 
+	"timesipooped.fyi/internal/database"
+	"timesipooped.fyi/internal/login"
+	"timesipooped.fyi/internal/poop"
+
 	_ "github.com/mattn/go-sqlite3"
-	"timesipooped.fyi/internal"
 
 	// todo remove on production
 	"github.com/joho/godotenv"
 )
 
 var (
-	userInfo = make(map[string]*internal.UserInfo)
+	userInfo = make(map[string]*login.UserInfo)
 )
 
 func test(w http.ResponseWriter, r *http.Request) {
@@ -29,15 +32,14 @@ func main() {
 		panic(err)
 	}
 
-	authConf := internal.NewOAuthConfig()
-	http.HandleFunc("/login", internal.HandleLogin(authConf))
-	http.HandleFunc("/login/callback", internal.HandleCallback(authConf, userInfo))
+	authConf := login.NewOAuthConfig()
+	http.HandleFunc("/login", login.HandleLogin(authConf))
+	http.HandleFunc("/login/callback", login.HandleCallback(authConf, userInfo))
 
-	internal.ConnectDB()
+	database.StartDB()
+	http.HandleFunc("/poop/add", poop.AddPoop)
 
-	http.HandleFunc("/poop/add", internal.AddPoop)
-
+	// REMOVE AFTER
 	http.HandleFunc("/", test)
-
 	log.Fatal(http.ListenAndServe(os.Getenv("SERVER_PORT"), nil))
 }

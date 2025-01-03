@@ -1,4 +1,4 @@
-package internal
+package poop
 
 import (
 	"net/http"

@@ -1,4 +1,4 @@
-package internal
+package login
 
 import (
 	"encoding/json"
@@ -19,12 +19,10 @@ type OAuthConfig struct {
 }
 
 type UserInfo struct {
+	Id            string `json:"id"`
 	Email         string `json:"email"`
 	FamilyName    string `json:"family_name"`
 	GivenName     string `json:"given_name"`
-	Id            string `json:"id"`
-	Name          string `json:"name"`
-	Picture       string `json:"picture"`
 	VerifiedEmail bool   `json:"verified_email"`
 }
 
@@ -110,7 +108,14 @@ func HandleCallback(authConf *OAuthConfig, userInfo map[string]*UserInfo) http.H
 		}
 		log.Println("User data received")
 
-        // IMPORTANT TODO MOVE THIS TO DB
+		if !info.VerifiedEmail {
+			log.Println("User email is not verified")
+			http.Error(w, "User email is not verified", http.StatusUnauthorized)
+			return
+		}
+		log.Println("User email is verified")
+
+		// IMPORTANT TODO MOVE THIS TO DB
 		userInfo[info.Id] = &info
 
 		w.WriteHeader(http.StatusOK)

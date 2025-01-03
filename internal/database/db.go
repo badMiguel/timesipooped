@@ -1,4 +1,4 @@
-package internal
+package database
 
 import (
 	"database/sql"
@@ -8,8 +8,8 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-func newConnection() error {
-	db, err := sql.Open("sqlite3", "../internal/poop.db")
+func initialize() error {
+	db, err := sql.Open("sqlite3", "./database/db.sqlite3")
 	if err != nil {
 		return fmt.Errorf("Error opening/creating sqlite3 file: %v\n", err)
 	}
@@ -47,9 +47,9 @@ func newConnection() error {
 	return nil
 }
 
-func ConnectDB() {
+func StartDB() {
 	for i := 0; i < 10; {
-		if err := newConnection(); err == nil {
+		if err := initialize(); err == nil {
 			log.Println("Successfully connected to the database")
 			break
 		} else {
