@@ -107,7 +107,7 @@ func HandleCallback(authConf *OAuthConfig, db *sql.DB) http.HandlerFunc {
 
 		if !info.VerifiedEmail {
 			log.Printf("User email <%v> is not verified", info.Email)
-			http.Error(w, "User email is not verified", http.StatusUnauthorized)
+			http.Error(w, "Email is not verified", http.StatusUnauthorized)
 			return
 		}
 		log.Println("User email is verified")

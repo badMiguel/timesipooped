@@ -14,6 +14,7 @@ type UserSchema struct {
 	email       string
 	givenName   string
 	familyName  string
+	picture     string
 	joined      time.Time
 	poopTotal   int
 	failedTotal int
@@ -24,6 +25,7 @@ type UserInfo struct {
 	Email         string `json:"email"`
 	FamilyName    string `json:"family_name"`
 	GivenName     string `json:"given_name"`
+	Picture       string `json:"picture"`
 	VerifiedEmail bool   `json:"verified_email"`
 }
 
@@ -43,6 +45,7 @@ func initialize(db *sql.DB) error {
         email TEXT UNIQUE,
         givenName TEXT, 
         familyName TEXT, 
+        picture TEXT,
         joined DATETIME DEFAULT CURRENT_TIMESTAMP,
         poopTotal INTEGER DEFAULT 0,
         failedTotal INTEGER DEFAULT 0
@@ -82,19 +85,43 @@ func InitializeDB(db *sql.DB) {
 	}
 }
 
-func addUser(userInfo *UserInfo, db *sql.DB) error {
-	log.Printf("User <%s %s> is new. Adding user to database...", userInfo.GivenName, userInfo.FamilyName)
+func addUser(db *sql.DB, userInfo *UserInfo) error {
+	log.Printf(
+		"User <%s> is new. Adding user to database...",
+		userInfo.Id,
+	)
 
 	_, err := db.Exec(`
-        INSERT INTO users (userId, email, givenName, familyName)
-        VALUES (?, ?, ?, ?)`,
-		userInfo.Id, userInfo.Email, userInfo.GivenName, userInfo.FamilyName,
+        INSERT INTO users (userId, email, givenName, familyName, picture)
+        VALUES (?, ?, ?, ?, ?)`,
+		userInfo.Id, userInfo.Email, userInfo.GivenName, userInfo.FamilyName, userInfo.Picture,
 	)
 	if err != nil {
 		return fmt.Errorf("Failed adding new user to database\nError:\n%v\n\n", err)
 	}
 
-	log.Printf("Successfully added new user <%s %s> to database.", userInfo.GivenName, userInfo.FamilyName)
+	log.Printf(
+		"Successfully added new user <%s> to database.",
+		userInfo.Id,
+	)
+	return nil
+}
+
+func updateDetajils(db *sql.DB, userInfo *UserInfo) error {
+	log.Printf("User <%s> already exists.", userInfo.Id)
+
+	_, err := db.Exec(`
+        UPDATE  users SET email=?, givenName=?, familyName=?, picture=? WHERE userId=?`,
+		userInfo.Email, userInfo.GivenName, userInfo.FamilyName, userInfo.Picture, userInfo.Id,
+	)
+	if err != nil {
+		return fmt.Errorf("Failed updating user data to database\nError:\n%v\n\n", err)
+	}
+
+	log.Printf(
+		"Successfully updated user <%s> data",
+		userInfo.Id,
+	)
 	return nil
 }
 
@@ -104,21 +131,21 @@ func IsNewUser(db *sql.DB, userInfo *UserInfo) error {
 		email       string
 		givenName   string
 		familyName  string
+		picture     string
 		joined      time.Time
 		poopTotal   int
 		failedTotal int
 	)
 
 	err := db.QueryRow(`SELECT * FROM users WHERE userId = ?`, userInfo.Id).Scan(
-		&userId, &email, &givenName, &familyName, &joined, &poopTotal, &failedTotal,
+		&userId, &email, &givenName, &familyName, &picture, &joined, &poopTotal, &failedTotal,
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return addUser(userInfo, db)
+			return addUser(db, userInfo)
 		} else {
 			return err
 		}
 	}
-	log.Printf("User <%s %s> already exists.", userInfo.GivenName, userInfo.FamilyName)
-	return nil
+	return updateDetajils(db, userInfo)
 }
