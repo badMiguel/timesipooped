@@ -2,7 +2,6 @@ package poop
 
 import (
 	"net/http"
-
 )
 
 type PoopInfo struct {

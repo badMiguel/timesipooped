@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
 	"log"
 	"net/http"
@@ -17,12 +18,12 @@ import (
 )
 
 var (
-	userInfo = make(map[string]*login.UserInfo)
+	userInfo = make(map[string]*database.UserInfo)
 )
 
 func test(w http.ResponseWriter, r *http.Request) {
 	for i := range userInfo {
-		fmt.Fprintln(w, *userInfo[i])
+		fmt.Fprintf(w, "%v\n", *userInfo[i])
 	}
 }
 
@@ -32,11 +33,17 @@ func main() {
 		panic(err)
 	}
 
+	db, err := sql.Open("sqlite3", "../internal/database/db.sqlite3")
+	if err != nil {
+		panic(fmt.Sprintf("Error opening/creating sqlite3 file: %v\n", err))
+	}
+	defer db.Close()
+	database.InitializeDB(db)
+
 	authConf := login.NewOAuthConfig()
 	http.HandleFunc("/login", login.HandleLogin(authConf))
-	http.HandleFunc("/login/callback", login.HandleCallback(authConf, userInfo))
+	http.HandleFunc("/login/callback", login.HandleCallback(authConf, userInfo, db))
 
-	database.StartDB()
 	http.HandleFunc("/poop/add", poop.AddPoop)
 
 	// REMOVE AFTER

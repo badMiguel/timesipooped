@@ -1,12 +1,16 @@
 package login
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"net/url"
 	"os"
+
+	_ "github.com/mattn/go-sqlite3"
+	"timesipooped.fyi/internal/database"
 )
 
 type OAuthConfig struct {
@@ -16,14 +20,6 @@ type OAuthConfig struct {
 	OauthURL     string
 	TokenURL     string
 	UserInfoURL  string
-}
-
-type UserInfo struct {
-	Id            string `json:"id"`
-	Email         string `json:"email"`
-	FamilyName    string `json:"family_name"`
-	GivenName     string `json:"given_name"`
-	VerifiedEmail bool   `json:"verified_email"`
 }
 
 func NewOAuthConfig() *OAuthConfig {
@@ -51,7 +47,7 @@ func HandleLogin(authConf *OAuthConfig) http.HandlerFunc {
 	}
 }
 
-func HandleCallback(authConf *OAuthConfig, userInfo map[string]*UserInfo) http.HandlerFunc {
+func HandleCallback(authConf *OAuthConfig, db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		code := r.URL.Query().Get("code")
 		if code == "" {
@@ -89,6 +85,7 @@ func HandleCallback(authConf *OAuthConfig, userInfo map[string]*UserInfo) http.H
 		if err != nil {
 			log.Printf("Error creating user info request: %v\n", err)
 			http.Error(w, "Failed to create user info request", http.StatusInternalServerError)
+			return
 		}
 		req.Header.Set("Authorization", "Bearer "+accessToken)
 		client := &http.Client{}
@@ -100,7 +97,7 @@ func HandleCallback(authConf *OAuthConfig, userInfo map[string]*UserInfo) http.H
 		}
 		defer resp.Body.Close()
 
-		var info UserInfo
+		var info database.UserInfo
 		if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
 			log.Printf("Error decoding user info: %v\n", err)
 			http.Error(w, "Failed to decode user info", http.StatusInternalServerError)
@@ -109,16 +106,20 @@ func HandleCallback(authConf *OAuthConfig, userInfo map[string]*UserInfo) http.H
 		log.Println("User data received")
 
 		if !info.VerifiedEmail {
-			log.Println("User email is not verified")
+			log.Printf("User email <%v> is not verified", info.Email)
 			http.Error(w, "User email is not verified", http.StatusUnauthorized)
 			return
 		}
 		log.Println("User email is verified")
 
-		// IMPORTANT TODO MOVE THIS TO DB
-		userInfo[info.Id] = &info
-
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("Client logged in"))
+
+		err = database.IsNewUser(db, &info)
+		if err != nil {
+			log.Printf("Error checking if user is new: %v\n", err)
+			http.Error(w, "Failed to check user status", http.StatusInternalServerError)
+			return
+		}
 	}
 }
