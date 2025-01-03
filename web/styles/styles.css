@@ -48,6 +48,8 @@ header {
     justify-content: center;
     display: flex;
     border-radius: 40px;
+    cursor: pointer;
+    z-index: 1;
 }
 
 main {
@@ -94,6 +96,7 @@ main {
     font-weight: 500;
     padding: 0.5rem 2rem 0.5rem 2rem;
     border-radius: 0.5rem;
+    cursor: pointer;
 }
 
 @media screen and (max-width: 900px) {
