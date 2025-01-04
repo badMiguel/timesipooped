@@ -125,7 +125,6 @@ func HandleCallback(authConf *OAuthConfig, db *sql.DB) http.HandlerFunc {
 
 		http.SetCookie(w, generateCookie("access_token", accessToken))
 		http.SetCookie(w, generateCookie("user_id", info.Id))
-		log.Print(w.Header())
 		http.Redirect(w, r, "http://localhost:8080", http.StatusSeeOther)
 
 		err = database.IsNewUser(db, &info)
@@ -141,7 +140,7 @@ func HandleStatus(authConf *OAuthConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		user_id, err := r.Cookie("user_id")
 		if err != nil {
-			log.Printf("Error getting user_id cookie\nError:\n%v\n\n", err)
+			log.Printf("Error getting user_id cookie \nError:\n%v\n\n", err)
 			http.Error(w, "Failed to retrieve user id", http.StatusForbidden)
 			return
 		}
