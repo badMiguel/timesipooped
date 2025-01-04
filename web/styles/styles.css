@@ -94,14 +94,25 @@ main {
     margin: 0 0 1rem 0;
 }
 
+.poop-sub--button,
+.failed-poop-sub--button {
+    font-weight: 900;
+}
+
+.poop-add--button,
+.failed-poop-add--button {
+    font-weight: 700;
+}
+
 .poop-add--button,
 .poop-sub--button,
 .failed-poop-add--button,
 .failed-poop-sub--button {
     background-color: var(--accent);
     color: var(--background);
-    font-weight: 500;
-    padding: 0.3rem;
+    font-size: 60px;
+    line-height: 1;
+    padding: 0.3rem 0.7rem;
     border-radius: 0.5rem;
     cursor: pointer;
 }
@@ -110,11 +121,47 @@ main {
     html {
         font-size: 14px;
     }
+
+    .poop-add--button,
+    .poop-sub--button,
+    .failed-poop-add--button,
+    .failed-poop-sub--button {
+        font-size: 40px;
+        padding: 0.3rem 0.7rem;
+    }
+
+    .poop-sub--button,
+    .failed-poop-sub--button {
+        font-weight: 700;
+    }
+
+    .poop-add--button,
+    .failed-poop-add--button {
+        font-weight: 600;
+    }
 }
 
 @media screen and (max-width: 550px) {
     html {
         font-size: 12px;
+    }
+
+    .poop-add--button,
+    .poop-sub--button,
+    .failed-poop-add--button,
+    .failed-poop-sub--button {
+        font-size: 35px;
+        padding: 0.3rem 0.7rem;
+    }
+
+    .poop-sub--button,
+    .failed-poop-sub--button {
+        font-weight: 600;
+    }
+
+    .poop-add--button,
+    .failed-poop-add--button {
+        font-weight: 500;
     }
 }
 
