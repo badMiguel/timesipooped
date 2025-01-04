@@ -55,5 +55,7 @@ func main() {
 
 	mux.HandleFunc("/poop/add", poop.AddPoop)
 
+	mux.HandleFunc("/get/user", database.FetchData(db))
+
 	log.Fatal(http.ListenAndServe(os.Getenv("SERVER_PORT"), corsMiddleware(mux)))
 }

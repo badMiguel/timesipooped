@@ -2,8 +2,10 @@ package database
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"log"
+	"net/http"
 	"time"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -33,6 +35,15 @@ type PoopSchema struct {
 	poopId int
 	date   time.Time
 	userId string
+}
+
+// user info for client
+type ClientUserInfo struct {
+	FamilyName  string `json:"family_name"`
+	GivenName   string `json:"given_name"`
+	Picture     string `json:"picture"`
+	PoopTotal   int    `json:"poopTotal"`
+	FailedTotal int    `json:"failedTotal"`
 }
 
 func initialize(db *sql.DB) error {
@@ -107,7 +118,7 @@ func addUser(db *sql.DB, userInfo *UserInfo) error {
 	return nil
 }
 
-func updateDetajils(db *sql.DB, userInfo *UserInfo) error {
+func updateDetails(db *sql.DB, userInfo *UserInfo) error {
 	log.Printf("User <%s> already exists.", userInfo.Id)
 
 	_, err := db.Exec(`
@@ -147,5 +158,55 @@ func IsNewUser(db *sql.DB, userInfo *UserInfo) error {
 			return err
 		}
 	}
-	return updateDetajils(db, userInfo)
+	return updateDetails(db, userInfo)
+}
+
+func FetchData(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userIdCookie, err := r.Cookie("user_id")
+		if err != nil {
+			log.Printf("Error getting user_id cookie \nError:\n%v\n\n", err)
+			http.Error(w, "Failed to retrieve user id", http.StatusForbidden)
+			return
+		}
+
+		var (
+			givenName   string
+			familyName  string
+			picture     string
+			poopTotal   int
+			failedTotal int
+		)
+		err = db.QueryRow(`
+            SELECT givenName, familyName, picture, poopTotal, failedTotal
+            FROM users 
+            WHERE userId = ?`,
+			userIdCookie.Value,
+		).Scan(
+			&givenName, &familyName, &picture, &poopTotal, &failedTotal,
+		)
+		if err != nil {
+			log.Printf("Error checking user <%s> data: %v\n", userIdCookie.Value, err)
+			http.Error(w, "Failed to get user data", http.StatusInternalServerError)
+			return
+		}
+
+		clientUserInfo := &ClientUserInfo{
+			GivenName:   givenName,
+			FamilyName:  familyName,
+			Picture:     picture,
+			PoopTotal:   poopTotal,
+			FailedTotal: failedTotal,
+		}
+		jsonMessage, err := json.Marshal(clientUserInfo)
+		if err != nil {
+			log.Printf("Failed to encode clientUserInfo of uid <%s>: %v\n", userIdCookie.Value, err)
+			http.Error(w, "Failed encoding json data", http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(jsonMessage)
+	}
 }
