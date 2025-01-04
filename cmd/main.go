@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"os"
 
-	"timesipooped.fyi/internal/database"
 	"timesipooped.fyi/internal/auth"
+	"timesipooped.fyi/internal/database"
 	"timesipooped.fyi/internal/poop"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -16,6 +16,22 @@ import (
 	// todo remove on production
 	"github.com/joho/godotenv"
 )
+
+func corsMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "http://localhost:8080")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, Cookie")
+		w.Header().Set("Access-Control-Allow-Credentials", "true")
+
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
 
 func main() {
 	err := godotenv.Load("../.env")
@@ -30,12 +46,14 @@ func main() {
 	defer db.Close()
 	database.InitializeDB(db)
 
+	mux := http.NewServeMux()
+
 	authConf := auth.NewOAuthConfig()
-	http.HandleFunc("/auth/login", auth.HandleLogin(authConf))
-	http.HandleFunc("/auth/login/callback", auth.HandleCallback(authConf, db))
-	http.HandleFunc("/auth/status", auth.HandleStatus(authConf))
+	mux.HandleFunc("/auth/login", auth.HandleLogin(authConf))
+	mux.HandleFunc("/auth/login/callback", auth.HandleCallback(authConf, db))
+	mux.HandleFunc("/auth/status", auth.HandleStatus(authConf))
 
-	http.HandleFunc("/poop/add", poop.AddPoop)
+	mux.HandleFunc("/poop/add", poop.AddPoop)
 
-	log.Fatal(http.ListenAndServe(os.Getenv("SERVER_PORT"), nil))
+	log.Fatal(http.ListenAndServe(os.Getenv("SERVER_PORT"), corsMiddleware(mux)))
 }

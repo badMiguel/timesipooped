@@ -1,4 +1,4 @@
-package login
+package auth
 
 import (
 	"database/sql"
@@ -112,14 +112,32 @@ func HandleCallback(authConf *OAuthConfig, db *sql.DB) http.HandlerFunc {
 		}
 		log.Println("User email is verified")
 
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("Client logged in"))
+		http.SetCookie(w, &http.Cookie{
+			Name:     "access_token",
+			Value:    accessToken,
+			HttpOnly: true,
+			Secure:   false,                 // TODO TRUE IN PROD
+			SameSite: http.SameSiteNoneMode, // http.SameSiteStrictMode,
+			Path:     "/",
+		})
+		http.Redirect(w, r, "http://localhost:8080", http.StatusSeeOther)
 
 		err = database.IsNewUser(db, &info)
 		if err != nil {
 			log.Printf("Error checking if user is new: %v\n", err)
 			http.Error(w, "Failed to check user status", http.StatusInternalServerError)
 			return
+		}
+	}
+}
+
+func HandleStatus(authConf *OAuthConfig) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// log.Println(w.Header(), r.Header)
+		if cookie, err := r.Cookie("access_token"); err == nil {
+			log.Println(cookie)
+		} else {
+			log.Println(err)
 		}
 	}
 }
