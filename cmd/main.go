@@ -8,7 +8,7 @@ import (
 	"os"
 
 	"timesipooped.fyi/internal/database"
-	"timesipooped.fyi/internal/login"
+	"timesipooped.fyi/internal/auth"
 	"timesipooped.fyi/internal/poop"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -30,9 +30,10 @@ func main() {
 	defer db.Close()
 	database.InitializeDB(db)
 
-	authConf := login.NewOAuthConfig()
-	http.HandleFunc("/login", login.HandleLogin(authConf))
-	http.HandleFunc("/login/callback", login.HandleCallback(authConf, db))
+	authConf := auth.NewOAuthConfig()
+	http.HandleFunc("/auth/login", auth.HandleLogin(authConf))
+	http.HandleFunc("/auth/login/callback", auth.HandleCallback(authConf, db))
+	http.HandleFunc("/auth/status", auth.HandleStatus(authConf))
 
 	http.HandleFunc("/poop/add", poop.AddPoop)
 
