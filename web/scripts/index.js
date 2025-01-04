@@ -144,8 +144,11 @@ async function profile() {
         const getPic = localStorage.getItem("picture");
         if (getPic !== null) {
             const image = new Image();
-            image.src = getPic;
-            profilePic.src = getPic;
+            const cacheBustedSrc = `${getPic}?t=${new Date().getTime()}`;
+            image.src = cacheBustedSrc;
+            image.onload = () => {
+                profilePic.src = cacheBustedSrc;
+            };
         }
         profilePicContainer.style.display = "flex";
         googleSignIn.style.display = "none";
