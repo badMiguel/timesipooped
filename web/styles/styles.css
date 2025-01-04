@@ -47,7 +47,7 @@ header {
     background-color: var(--text);
     align-items: center;
     justify-content: center;
-    display: none;
+    display: flex;
     border-radius: 40px;
     cursor: pointer;
 }
@@ -94,12 +94,14 @@ main {
     margin: 0 0 1rem 0;
 }
 
-.poop--button,
-.failed-poop--button {
+.poop-add--button,
+.poop-sub--button,
+.failed-poop-add--button,
+.failed-poop-sub--button {
     background-color: var(--accent);
     color: var(--background);
     font-weight: 500;
-    padding: 0.5rem 2rem 0.5rem 2rem;
+    padding: 0.3rem;
     border-radius: 0.5rem;
     cursor: pointer;
 }
