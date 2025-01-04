@@ -47,6 +47,17 @@ func HandleLogin(authConf *OAuthConfig) http.HandlerFunc {
 	}
 }
 
+func generateCookie(name string, val string) *http.Cookie {
+	return &http.Cookie{
+		Name:     name,
+		Value:    val,
+		HttpOnly: true,
+		Secure:   false,                 // TODO TRUE IN PROD
+		SameSite: http.SameSiteNoneMode, // http.SameSiteStrictMode,
+		Path:     "/",
+	}
+}
+
 func HandleCallback(authConf *OAuthConfig, db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		code := r.URL.Query().Get("code")
@@ -112,14 +123,8 @@ func HandleCallback(authConf *OAuthConfig, db *sql.DB) http.HandlerFunc {
 		}
 		log.Println("User email is verified")
 
-		http.SetCookie(w, &http.Cookie{
-			Name:     "access_token",
-			Value:    accessToken,
-			HttpOnly: true,
-			Secure:   false,                 // TODO TRUE IN PROD
-			SameSite: http.SameSiteNoneMode, // http.SameSiteStrictMode,
-			Path:     "/",
-		})
+		http.SetCookie(w, generateCookie("access_token", accessToken))
+		http.SetCookie(w, generateCookie("user_id", info.Id))
 		http.Redirect(w, r, "http://localhost:8080", http.StatusSeeOther)
 
 		err = database.IsNewUser(db, &info)
