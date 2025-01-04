@@ -52,8 +52,8 @@ func generateCookie(name string, val string) *http.Cookie {
 		Name:     name,
 		Value:    val,
 		HttpOnly: true,
-		Secure:   false,                 // TODO TRUE IN PROD
-		SameSite: http.SameSiteNoneMode, // http.SameSiteStrictMode,
+		Secure:   false, // TODO TRUE IN PROD
+		SameSite: http.SameSiteStrictMode,
 		Path:     "/",
 	}
 }
@@ -125,6 +125,7 @@ func HandleCallback(authConf *OAuthConfig, db *sql.DB) http.HandlerFunc {
 
 		http.SetCookie(w, generateCookie("access_token", accessToken))
 		http.SetCookie(w, generateCookie("user_id", info.Id))
+		log.Print(w.Header())
 		http.Redirect(w, r, "http://localhost:8080", http.StatusSeeOther)
 
 		err = database.IsNewUser(db, &info)
@@ -138,11 +139,32 @@ func HandleCallback(authConf *OAuthConfig, db *sql.DB) http.HandlerFunc {
 
 func HandleStatus(authConf *OAuthConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// log.Println(w.Header(), r.Header)
-		if cookie, err := r.Cookie("access_token"); err == nil {
-			log.Println(cookie)
-		} else {
-			log.Println(err)
+		user_id, err := r.Cookie("user_id")
+		if err != nil {
+			log.Printf("Error getting user_id cookie\nError:\n%v\n\n", err)
+			http.Error(w, "Failed to retrieve user id", http.StatusForbidden)
+			return
+		}
+
+		accessTokenCookie, err := r.Cookie("access_token")
+		if err != nil {
+			log.Printf("Error getting access_token of user <%v>\nError:\n%v\n\n", user_id, err)
+			http.Error(w, "Access token not found", http.StatusForbidden)
+			return
+		}
+
+		resp, err := http.Get("https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=" + accessTokenCookie.Value)
+		if err != nil {
+			log.Printf("Error verifying access token of user <%v>\nError:\n%v\n\n", user_id, err)
+			http.Error(w, "Failed to verify access token", http.StatusForbidden)
+			return
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			log.Printf("Invalid access token of user <%v>\nError:\n%v\n\n", user_id, err)
+			http.Error(w, "Invalid access token", http.StatusForbidden)
+			return
 		}
 	}
 }
