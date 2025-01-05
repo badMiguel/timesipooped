@@ -2,6 +2,8 @@ package poop
 
 import (
 	"database/sql"
+	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -10,21 +12,21 @@ import (
 	"timesipooped.fyi/internal/auth"
 )
 
-type PoopInfo struct {
-	poopTotal  int
-	fPoopTotal int
-
-	poopList  []string
-	fPoopList []string
+type JsonResponse struct {
+	PoopTotal   int `json:"poopTotal"`
+	FailedTotal int `json:"failedTotal"`
 }
 
-func newPoopInfo() *PoopInfo {
-	return &PoopInfo{
-		poopTotal:  0,
-		fPoopTotal: 0,
-		poopList:   []string{},
-		fPoopList:  []string{},
+func generateJsonBytes(pTotal int, fTotal int) (*[]byte, error) {
+	resp := &JsonResponse{
+		PoopTotal:   pTotal,
+		FailedTotal: fTotal,
 	}
+	jsonBytes, err := json.Marshal(resp)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to encode json data: %v\n", err)
+	}
+	return &jsonBytes, nil
 }
 
 func PoopRoute(db *sql.DB) http.HandlerFunc {
@@ -41,45 +43,75 @@ func PoopRoute(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
+		var poopTotal int
+		for i := 0; i < 10; i++ {
+			err := db.QueryRow(`SELECT poopTotal FROM users WHERE userId = ?`, userId).Scan(&poopTotal)
+			if err != nil {
+				log.Printf("Error finding user's <%v> poop total. Trying again(%d)\n", userId, i)
+				if i == 9 {
+					log.Printf("Max attempt. Cannot query user <%v>: %v\n", userId, err)
+					http.Error(w, "Server cannot find your poop data!", http.StatusInternalServerError)
+					return
+				}
+				time.Sleep(time.Duration(i/2) * time.Second)
+				continue
+			}
+			break
+		}
+
+		var failedTotal int
+		for i := 0; i < 10; i++ {
+			err := db.QueryRow(`SELECT failedTotal FROM users WHERE userId = ?`, userId).Scan(&failedTotal)
+			if err != nil {
+				log.Printf("Error finding user's <%v> failed poop total. Trying again(%d)\n", userId, i)
+				if i == 9 {
+					log.Printf("Max attempt. Cannot query user <%v>: %v\n", userId, err)
+					http.Error(w, "Server cannot find your failed poop data!", http.StatusInternalServerError)
+					return
+				}
+				time.Sleep(time.Duration(i/2) * time.Second)
+				continue
+			}
+			break
+		}
+
 		switch r.URL.Path {
 		case "/add":
-			AddPoop(w, r, db, userId)
+			AddPoop(w, r, db, userId, poopTotal, failedTotal)
 		case "/failed/add":
-			AddFailedPoop(w, r, db, userId)
+			AddFailedPoop(w, r, db, userId, poopTotal, failedTotal)
 		case "/sub":
-			SubPoop(w, r, db, userId)
+			SubPoop(w, r, db, userId, poopTotal, failedTotal)
 		case "/failed/sub":
-			SubFailedPoop(w, r, db, userId)
+			SubFailedPoop(w, r, db, userId, poopTotal, failedTotal)
 		default:
 			http.NotFound(w, r)
 		}
 	})
 }
 
-func AddPoop(w http.ResponseWriter, r *http.Request, db *sql.DB, userId string) {
-	var poopTotal int
-	for i := 0; i < 10; i++ {
-		err := db.QueryRow(`SELECT poopTotal FROM users WHERE userId = ?`, userId).Scan(&poopTotal)
-		if err != nil {
-			log.Printf("Error finding user's <%v> poop total. Trying again(%d)\n", userId, i)
-			if i == 9 {
-				log.Printf("Max attempt. Cannot query user <%v>\n", userId)
-				http.Error(w, "Server cannot find your poop data!", http.StatusInternalServerError)
-				return
-			}
-			time.Sleep(time.Duration(i/2) * time.Second)
-			continue
-		}
-		poopTotal++
-		break
-	}
-
+func AddPoop(w http.ResponseWriter, r *http.Request, db *sql.DB, userId string, poopTotal, failedTotal int) {
 	for i := 0; i < 10; i++ {
 		_, err := db.Exec(`INSERT INTO poop (userId, success) VALUES (?, ?)`, userId, 1)
 		if err != nil {
 			log.Printf("Error adding user's <%v> poop. Trying again(%d)\n", userId, i)
 			if i == 9 {
-				log.Printf("Max attempt. Cannot add user's <%v> poop.\n", userId)
+				log.Printf("Max attempt. Cannot add user's <%v> poop: %v\n", userId, err)
+				http.Error(w, "Failed to add your poop :(", http.StatusInternalServerError)
+				return
+			}
+			time.Sleep(time.Duration(i/2) * time.Second)
+			continue
+		}
+		break
+	}
+
+	for i := 0; i < 10; i++ {
+		_, err := db.Exec(`UPDATE users SET poopTotal = ? WHERE userId = ?`, poopTotal+1, userId)
+		if err != nil {
+			log.Printf("Error updating user's <%v> poop total. Trying again(%d)\n", userId, i)
+			if i == 9 {
+				log.Printf("Max attempt. Cannot add user's <%v> poop: %v\n", userId, err)
 				http.Error(w, "Failed to add your poop :(", http.StatusInternalServerError)
 				return
 			}
@@ -103,47 +135,13 @@ func AddPoop(w http.ResponseWriter, r *http.Request, db *sql.DB, userId string) 
 		}
 		break
 	}
-}
-
-func AddFailedPoop(w http.ResponseWriter, r *http.Request, db *sql.DB, userId string) {
-	var failedTotal int
-	for i := 0; i < 10; i++ {
-		err := db.QueryRow(`SELECT failedTotal FROM users WHERE userId = ?`, userId).Scan(&failedTotal)
-		if err != nil {
-			log.Printf("Error finding user's <%v> failed poop total. Trying again(%d)\n", userId, i)
-			if i == 9 {
-				log.Printf("Max attempt. Cannot query user <%v>\n", userId)
-				http.Error(w, "Server cannot find your failed poop data!", http.StatusInternalServerError)
-				return
-			}
-			time.Sleep(time.Duration(i/2) * time.Second)
-			continue
-		}
-		failedTotal++
-		break
-	}
 
 	for i := 0; i < 10; i++ {
-		_, err := db.Exec(`INSERT INTO poop (userId, success) VALUES (?, ?)`, userId, 0)
-		if err != nil {
-			log.Printf("Error adding user's <%v> poop. Trying again(%d)\n", userId, i)
-			if i == 9 {
-				log.Printf("Max attempt. Cannot add user's <%v> poop.\n", userId)
-				http.Error(w, "Failed to add your failed poop :(", http.StatusInternalServerError)
-				return
-			}
-			time.Sleep(time.Duration(i/2) * time.Second)
-			continue
-		}
-		break
-	}
-
-	for i := 0; i < 10; i++ {
-		_, err := db.Exec(`UPDATE users SET failedTotal = ? WHERE userId = ?`, failedTotal, userId)
+		_, err := db.Exec(`UPDATE users SET failedTotal = ? WHERE userId = ?`, failedTotal+1, userId)
 		if err != nil {
 			log.Printf("Error updating user's <%v> failed poop total. Trying again(%d)\n", userId, i)
 			if i == 9 {
-				log.Printf("Max attempt. Cannot add user's <%v> failed poop.\n", userId)
+				log.Printf("Max attempt. Cannot add user's <%v> failed poop: %v\n", userId, err)
 				http.Error(w, "Failed to add your failed poop :(", http.StatusInternalServerError)
 				return
 			}
@@ -154,10 +152,82 @@ func AddFailedPoop(w http.ResponseWriter, r *http.Request, db *sql.DB, userId st
 	}
 }
 
-func SubPoop(w http.ResponseWriter, r *http.Request, db *sql.DB, userId string) {
+func SubPoop(w http.ResponseWriter, r *http.Request, db *sql.DB, userId string, poopTotal, failedTotal int) {
+	for i := 0; i < 10; i++ {
+		_, err := db.Exec(`
+            DELETE FROM poop WHERE poopId = (
+                SELECT poopId
+                FROM poop
+                WHERE userId = ? AND success = ?
+                ORDER BY poopId DESC
+                LIMIT 1
+            );`, userId, 1,
+		)
+		if err != nil {
+			log.Printf("Error subing user's <%v> poop. Trying again(%d)\n", userId, i)
+			if i == 9 {
+				log.Printf("Max attempt. Cannot sub user's <%v> poop: %v\n", userId, err)
+				http.Error(w, "Failed to subtract your poop :(", http.StatusInternalServerError)
+				return
+			}
+			time.Sleep(time.Duration(i/2) * time.Second)
+			continue
+		}
+		break
+	}
+
+	for i := 0; i < 10; i++ {
+		_, err := db.Exec(`UPDATE users SET poopTotal = ? WHERE userId = ?`, poopTotal-1, userId)
+		if err != nil {
+			log.Printf("Error updating user's <%v> poop total. Trying again(%d)\n", userId, i)
+			if i == 9 {
+				log.Printf("Max attempt. Cannot sub user's <%v> poop: %v\n", userId, err)
+				http.Error(w, "Failed to subtract your poop :(", http.StatusInternalServerError)
+				return
+			}
+			time.Sleep(time.Duration(i/2) * time.Second)
+			continue
+		}
+		break
+	}
 }
 
-func SubFailedPoop(w http.ResponseWriter, r *http.Request, db *sql.DB, userId string) {
-}
+func SubFailedPoop(w http.ResponseWriter, r *http.Request, db *sql.DB, userId string, poopTotal, failedTotal int) {
+	for i := 0; i < 10; i++ {
+		_, err := db.Exec(`
+            DELETE FROM poop WHERE poopId = (
+                SELECT poopId
+                FROM poop
+                WHERE userId = ? AND success = ?
+                ORDER BY poopId DESC
+                LIMIT 1
+            );`, userId, 0,
+		)
+		if err != nil {
+			log.Printf("Error subing user's <%v> failed poop. Trying again(%d)\n", userId, i)
+			if i == 9 {
+				log.Printf("Max attempt. Cannot sub user's <%v> failed poop: %v\n", userId, err)
+				http.Error(w, "Failed to subtract your failed poop :(", http.StatusInternalServerError)
+				return
+			}
+			time.Sleep(time.Duration(i/2) * time.Second)
+			continue
+		}
+		break
+	}
 
-//
+	for i := 0; i < 10; i++ {
+		_, err := db.Exec(`UPDATE users SET failedTotal = ? WHERE userId = ?`, failedTotal-1, userId)
+		if err != nil {
+			log.Printf("Error updating user's <%v> failed poop total. Trying again(%d)\n", userId, i)
+			if i == 9 {
+				log.Printf("Max attempt. Cannot sub user's <%v> failed poop: %v\n", userId, err)
+				http.Error(w, "Failed to subtract your failed poop :(", http.StatusInternalServerError)
+				return
+			}
+			time.Sleep(time.Duration(i/2) * time.Second)
+			continue
+		}
+		break
+	}
+}
