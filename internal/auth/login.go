@@ -136,29 +136,39 @@ func HandleCallback(authConf *OAuthConfig, db *sql.DB) http.HandlerFunc {
 	}
 }
 
+func verifyToken(r *http.Request) (*http.Response, string, error) {
+	user_id, err := r.Cookie("user_id")
+	if err != nil {
+		return nil, "", fmt.Errorf("Error getting user_id cookie \nError:\n%v\n\n", err)
+	}
+
+	accessTokenCookie, err := r.Cookie("access_token")
+	if err != nil {
+		return nil, "", fmt.Errorf("Error getting access_token of user <%v>\nError:\n%v\n\n", user_id, err)
+	}
+
+	resp, err := http.Get("https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=" + accessTokenCookie.Value)
+	if err != nil {
+		return nil, "", fmt.Errorf("Error verifying access token of user <%v>\nError:\n%v\n\n", user_id, err)
+	}
+	defer resp.Body.Close()
+
+	return resp, user_id.Value, nil
+}
+
 func HandleStatus(authConf *OAuthConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		user_id, err := r.Cookie("user_id")
+		if r.Method != http.MethodGet {
+			http.Error(w, "Invalid method", http.StatusMethodNotAllowed)
+			return
+		}
+
+		resp, user_id, err := verifyToken(r)
 		if err != nil {
-			log.Printf("Error getting user_id cookie \nError:\n%v\n\n", err)
+			log.Printf("Error verifying token: %v\n", err)
 			http.Error(w, "Failed to retrieve user id", http.StatusForbidden)
 			return
 		}
-
-		accessTokenCookie, err := r.Cookie("access_token")
-		if err != nil {
-			log.Printf("Error getting access_token of user <%v>\nError:\n%v\n\n", user_id, err)
-			http.Error(w, "Access token not found", http.StatusForbidden)
-			return
-		}
-
-		resp, err := http.Get("https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=" + accessTokenCookie.Value)
-		if err != nil {
-			log.Printf("Error verifying access token of user <%v>\nError:\n%v\n\n", user_id, err)
-			http.Error(w, "Failed to verify access token", http.StatusForbidden)
-			return
-		}
-		defer resp.Body.Close()
 
 		if resp.StatusCode != http.StatusOK {
 			log.Printf("Invalid access token of user <%v>\nError:\n%v\n\n", user_id, err)

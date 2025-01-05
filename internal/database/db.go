@@ -163,6 +163,11 @@ func IsNewUser(db *sql.DB, userInfo *UserInfo) error {
 
 func FetchData(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "Invalid method", http.StatusMethodNotAllowed)
+			return
+		}
+
 		userIdCookie, err := r.Cookie("user_id")
 		if err != nil {
 			log.Printf("Error getting user_id cookie \nError:\n%v\n\n", err)
