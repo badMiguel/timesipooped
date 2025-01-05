@@ -112,7 +112,7 @@ async function fetchVal() {
         const data = await response.json();
         return data;
     } catch (err) {
-        console.log(err);
+        console.error(err);
         fetchError();
         return null;
     }
@@ -206,6 +206,7 @@ async function profile() {
                 image.src = cacheBustedSrc;
                 image.onload = () => {
                     profilePic.src = cacheBustedSrc;
+                    localStorage.setItem("picture", cacheBustedSrc);
                 };
             } else {
                 profilePic.src = getPic;
