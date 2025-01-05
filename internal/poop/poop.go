@@ -106,6 +106,52 @@ func AddPoop(w http.ResponseWriter, r *http.Request, db *sql.DB, userId string) 
 }
 
 func AddFailedPoop(w http.ResponseWriter, r *http.Request, db *sql.DB, userId string) {
+	var failedTotal int
+	for i := 0; i < 10; i++ {
+		err := db.QueryRow(`SELECT failedTotal FROM users WHERE userId = ?`, userId).Scan(&failedTotal)
+		if err != nil {
+			log.Printf("Error finding user's <%v> failed poop total. Trying again(%d)\n", userId, i)
+			if i == 9 {
+				log.Printf("Max attempt. Cannot query user <%v>\n", userId)
+				http.Error(w, "Server cannot find your failed poop data!", http.StatusInternalServerError)
+				return
+			}
+			time.Sleep(time.Duration(i/2) * time.Second)
+			continue
+		}
+		failedTotal++
+		break
+	}
+
+	for i := 0; i < 10; i++ {
+		_, err := db.Exec(`INSERT INTO poop (userId, success) VALUES (?, ?)`, userId, 0)
+		if err != nil {
+			log.Printf("Error adding user's <%v> poop. Trying again(%d)\n", userId, i)
+			if i == 9 {
+				log.Printf("Max attempt. Cannot add user's <%v> poop.\n", userId)
+				http.Error(w, "Failed to add your failed poop :(", http.StatusInternalServerError)
+				return
+			}
+			time.Sleep(time.Duration(i/2) * time.Second)
+			continue
+		}
+		break
+	}
+
+	for i := 0; i < 10; i++ {
+		_, err := db.Exec(`UPDATE users SET failedTotal = ? WHERE userId = ?`, failedTotal, userId)
+		if err != nil {
+			log.Printf("Error updating user's <%v> failed poop total. Trying again(%d)\n", userId, i)
+			if i == 9 {
+				log.Printf("Max attempt. Cannot add user's <%v> failed poop.\n", userId)
+				http.Error(w, "Failed to add your failed poop :(", http.StatusInternalServerError)
+				return
+			}
+			time.Sleep(time.Duration(i/2) * time.Second)
+			continue
+		}
+		break
+	}
 }
 
 func SubPoop(w http.ResponseWriter, r *http.Request, db *sql.DB, userId string) {
@@ -114,4 +160,4 @@ func SubPoop(w http.ResponseWriter, r *http.Request, db *sql.DB, userId string) 
 func SubFailedPoop(w http.ResponseWriter, r *http.Request, db *sql.DB, userId string) {
 }
 
-// failedTotal
+//
