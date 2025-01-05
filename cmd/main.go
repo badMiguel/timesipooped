@@ -53,7 +53,10 @@ func main() {
 	mux.HandleFunc("/auth/login/callback", auth.HandleCallback(authConf, db))
 	mux.HandleFunc("/auth/status", auth.HandleStatus(authConf))
 
-	mux.HandleFunc("/poop/add", poop.AddPoop)
+	mux.Handle("/poop/add", http.StripPrefix("/poop", poop.PoopRoute(db)))
+	mux.Handle("/poop/failed/add", http.StripPrefix("/poop", poop.PoopRoute(db)))
+	mux.Handle("/poop/sub", http.StripPrefix("/poop", poop.PoopRoute(db)))
+	mux.Handle("/poop/failed/sub", http.StripPrefix("/poop", poop.PoopRoute(db)))
 
 	mux.HandleFunc("/get/user", database.FetchData(db))
 
