@@ -47,13 +47,11 @@ header {
     background-color: var(--text);
     align-items: center;
     justify-content: center;
-    display: flex;
     border-radius: 40px;
     cursor: pointer;
 }
 
 .google-sign-in {
-    display: flex;
     cursor: pointer;
 }
 

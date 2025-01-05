@@ -248,8 +248,8 @@ async function profile() {
             if (isPictureExpired()) {
                 image.src = cacheBustedSrc;
                 image.onload = () => {
-                    profilePic.src = cacheBustedSrc;
-                    localStorage.setItem("picture", cacheBustedSrc);
+                    profilePic.src = image.src;
+                    localStorage.setItem("picture", image.src);
                 };
             } else {
                 profilePic.src = getPic;

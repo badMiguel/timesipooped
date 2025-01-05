@@ -37,7 +37,7 @@ func NewOAuthConfig() *OAuthConfig {
 func HandleLogin(authConf *OAuthConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		authUrl := fmt.Sprintf(
-			"%s?response_type=code&client_id=%s&redirect_uri=%s&scope=openid%%20email%%20https://www.googleapis.com/auth/userinfo.profile",
+			"%s?response_type=code&client_id=%s&redirect_uri=%s&scope=openid%%20email%%20https://www.googleapis.com/auth/userinfo.profile&access_type=offline&prompt=consent",
 			authConf.OauthURL,
 			authConf.ClientId,
 			url.QueryEscape(authConf.RedirectURI),
@@ -73,6 +73,7 @@ func HandleCallback(authConf *OAuthConfig, db *sql.DB) http.HandlerFunc {
 			"redirect_uri":  {authConf.RedirectURI},
 			"grant_type":    {"authorization_code"},
 		})
+
 		if err != nil {
 			log.Printf("Error exchanging code for token: %v\n", err)
 			http.Error(w, "Failed to exchange code", http.StatusInternalServerError)
@@ -88,6 +89,8 @@ func HandleCallback(authConf *OAuthConfig, db *sql.DB) http.HandlerFunc {
 
 		accessToken, ok := tokenData["access_token"].(string)
 		if !ok {
+			log.Println("Error getting access token")
+			http.Error(w, "Failed to get access token", http.StatusInternalServerError)
 			return
 		}
 		log.Println("Successfully got access token")
@@ -108,6 +111,14 @@ func HandleCallback(authConf *OAuthConfig, db *sql.DB) http.HandlerFunc {
 		}
 		defer resp.Body.Close()
 
+		refreshToken, ok := tokenData["refresh_token"].(string)
+		if !ok {
+			log.Println("Error getting access token")
+			http.Error(w, "Failed to get access token", http.StatusInternalServerError)
+			return
+		}
+		log.Println("Successfully got access token")
+
 		var info database.UserInfo
 		if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
 			log.Printf("Error decoding user info: %v\n", err)
@@ -124,6 +135,7 @@ func HandleCallback(authConf *OAuthConfig, db *sql.DB) http.HandlerFunc {
 		log.Println("User email is verified")
 
 		http.SetCookie(w, generateCookie("access_token", accessToken))
+        http.SetCookie(w, generateCookie("refresh_token", refreshToken))
 		http.SetCookie(w, generateCookie("user_id", info.Id))
 		http.Redirect(w, r, "http://localhost:8080", http.StatusSeeOther)
 
