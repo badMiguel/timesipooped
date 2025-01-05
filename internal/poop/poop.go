@@ -29,6 +29,18 @@ func generateJsonBytes(pTotal int, fTotal int) (*[]byte, error) {
 	return &jsonBytes, nil
 }
 
+func generateResponse(w http.ResponseWriter, pTotal, fTotal int) {
+	jsonBytes, err := generateJsonBytes(pTotal, fTotal)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, "Failed processing data", http.StatusInternalServerError)
+	} else {
+		w.WriteHeader(http.StatusOK)
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(*jsonBytes)
+	}
+}
+
 func PoopRoute(db *sql.DB) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -121,13 +133,17 @@ func AddPoop(w http.ResponseWriter, r *http.Request, db *sql.DB, userId string, 
 		break
 	}
 
+	generateResponse(w, poopTotal+1, failedTotal)
+}
+
+func AddFailedPoop(w http.ResponseWriter, r *http.Request, db *sql.DB, userId string, poopTotal, failedTotal int) {
 	for i := 0; i < 10; i++ {
-		_, err := db.Exec(`UPDATE users SET poopTotal = ? WHERE userId = ?`, poopTotal, userId)
+		_, err := db.Exec(`INSERT INTO poop (userId, success) VALUES (?, ?)`, userId, 0)
 		if err != nil {
-			log.Printf("Error updating user's <%v> poop total. Trying again(%d)\n", userId, i)
+			log.Printf("Error adding user's <%v> poop. Trying again(%d)\n", userId, i)
 			if i == 9 {
-				log.Printf("Max attempt. Cannot add user's <%v> poop.\n", userId)
-				http.Error(w, "Failed to add your poop :(", http.StatusInternalServerError)
+				log.Printf("Max attempt. Cannot add user's <%v> poop: %v\n", userId, err)
+				http.Error(w, "Failed to add your failed poop :(", http.StatusInternalServerError)
 				return
 			}
 			time.Sleep(time.Duration(i/2) * time.Second)
@@ -150,9 +166,17 @@ func AddPoop(w http.ResponseWriter, r *http.Request, db *sql.DB, userId string, 
 		}
 		break
 	}
+
+	generateResponse(w, poopTotal, failedTotal+1)
+	log.Println(w.Header())
 }
 
 func SubPoop(w http.ResponseWriter, r *http.Request, db *sql.DB, userId string, poopTotal, failedTotal int) {
+	if poopTotal < 1 {
+		http.Error(w, "Stop  - You haven't pooped yet!", http.StatusTeapot)
+		return
+	}
+
 	for i := 0; i < 10; i++ {
 		_, err := db.Exec(`
             DELETE FROM poop WHERE poopId = (
@@ -190,9 +214,16 @@ func SubPoop(w http.ResponseWriter, r *http.Request, db *sql.DB, userId string, 
 		}
 		break
 	}
+
+	generateResponse(w, poopTotal-1, failedTotal)
 }
 
 func SubFailedPoop(w http.ResponseWriter, r *http.Request, db *sql.DB, userId string, poopTotal, failedTotal int) {
+	if failedTotal < 1 {
+		http.Error(w, "Stop  - You haven't pooped yet!", http.StatusTeapot)
+		return
+	}
+
 	for i := 0; i < 10; i++ {
 		_, err := db.Exec(`
             DELETE FROM poop WHERE poopId = (
@@ -230,4 +261,6 @@ func SubFailedPoop(w http.ResponseWriter, r *http.Request, db *sql.DB, userId st
 		}
 		break
 	}
+
+	generateResponse(w, poopTotal, failedTotal-1)
 }
