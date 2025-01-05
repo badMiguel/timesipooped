@@ -168,7 +168,6 @@ func AddFailedPoop(w http.ResponseWriter, r *http.Request, db *sql.DB, userId st
 	}
 
 	generateResponse(w, poopTotal, failedTotal+1)
-	log.Println(w.Header())
 }
 
 func SubPoop(w http.ResponseWriter, r *http.Request, db *sql.DB, userId string, poopTotal, failedTotal int) {

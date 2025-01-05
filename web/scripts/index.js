@@ -3,9 +3,14 @@
  * family_name: string,
  * given_name: string,
  * picture: string,
- * poop_total: number,
- * failed_total: number,
+ * poopTotal: number,
+ * failedTotal: number,
  * }} UserInfo
+ *
+ * @typedef {{
+ * poopTotal: number
+ * failedTotal: number
+ * }} UpdatedPoop
  */
 
 function fetchError() {}
@@ -41,6 +46,7 @@ async function verifyStatus() {
 /**
  * @param {boolean} isPoop
  * @param {boolean} toAdd
+ * @returns {Promise<UpdatedPoop | undefined>}
  */
 async function updateValue(isPoop, toAdd) {
     try {
@@ -49,6 +55,10 @@ async function updateValue(isPoop, toAdd) {
             method: "POST",
             credentials: "include",
         });
+        if (!response.ok) {
+            throw new Error(`Response not ok. Status code: ${response.status}`);
+        }
+        return await response.json();
     } catch (err) {
         console.error(
             `Failed ${toAdd ? "add" : "subtract"} <${isPoop ? "poop" : "failed poop"}> value: ${err}`
@@ -56,6 +66,16 @@ async function updateValue(isPoop, toAdd) {
         updateValueError();
         return;
     }
+}
+
+/** @param {number} val */
+function updateFailedCounter(val) {
+    const failedCounter = document.querySelector(".failed-poop--counter");
+    if (!(failedCounter instanceof HTMLHeadingElement)) {
+        console.error(`failed to find failed-poop--counter element.`);
+        return;
+    }
+    failedCounter.innerText = val.toString();
 }
 
 async function failedPoop() {
@@ -70,11 +90,27 @@ async function failedPoop() {
         return;
     }
     fPoopAddBtn.addEventListener("click", async () => {
-        await updateValue(false, true);
+        const val = await updateValue(false, true);
+        if (val) {
+            updateFailedCounter(val.failedTotal);
+        }
     });
     fPoopSubBtn.addEventListener("click", async () => {
-        await updateValue(false, false);
+        const val = await updateValue(false, false);
+        if (val) {
+            updateFailedCounter(val.failedTotal);
+        }
     });
+}
+
+/** @param {number} val */
+function updatePoopCounter(val) {
+    const poopCounter = document.querySelector(".poop--counter");
+    if (!(poopCounter instanceof HTMLHeadingElement)) {
+        console.error(`failed to find poop--counter element.`);
+        return;
+    }
+    poopCounter.innerText = val.toString();
 }
 
 async function poop() {
@@ -90,10 +126,16 @@ async function poop() {
     }
 
     poopAddBtn.addEventListener("click", async () => {
-        await updateValue(true, true);
+        const val = await updateValue(true, true);
+        if (val) {
+            updatePoopCounter(val.poopTotal);
+        }
     });
     poopSubBtn.addEventListener("click", async () => {
-        await updateValue(true, false);
+        const val = await updateValue(true, false);
+        if (val) {
+            updatePoopCounter(val.poopTotal);
+        }
     });
 }
 
@@ -152,8 +194,9 @@ async function checkStorage() {
     checkStorageHelper("given_name", val.given_name);
     checkStorageHelper("family_name", val.family_name);
     checkStorageHelper("picture", val.picture);
-    checkStorageHelper("poop_total", val.poop_total);
-    checkStorageHelper("failed_total", val.failed_total);
+
+    updatePoopCounter(val.poopTotal);
+    updateFailedCounter(val.failedTotal);
 }
 
 /** @returns {boolean} */
