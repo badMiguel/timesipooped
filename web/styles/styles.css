@@ -115,6 +115,7 @@ main {
     padding: 0.3rem 0.7rem;
     border-radius: 0.5rem;
     cursor: pointer;
+    user-select: none;
 }
 
 @media screen and (max-width: 900px) {

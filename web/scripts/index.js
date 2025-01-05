@@ -11,6 +11,7 @@
 function fetchError() {}
 
 function authError() {
+    // TODO
     console.log("not authenticated");
 }
 
@@ -36,26 +37,34 @@ async function verifyStatus() {
 }
 
 async function failedPoop() {
-    const fPoopButton = document.querySelector(".failed-poop--button");
-    if (!(fPoopButton instanceof HTMLParagraphElement)) {
-        console.error(`failed to find failed-poop--button element.`);
+    const fPoopAddBtn = document.querySelector(".failed-poop-add--button");
+    if (!(fPoopAddBtn instanceof HTMLParagraphElement)) {
+        console.error(`failed to find failed-poop-add--button element.`);
         return;
     }
-    fPoopButton.addEventListener("click", () => {
-        try {
-        } catch (err) {}
-    });
+    const fPoopSubBtn = document.querySelector(".failed-poop-sub--button");
+    if (!(fPoopSubBtn instanceof HTMLParagraphElement)) {
+        console.error(`failed to find failed-poop-sub--button element.`);
+        return;
+    }
+    fPoopAddBtn.addEventListener("click", () => {});
+    fPoopSubBtn.addEventListener("click", () => {});
 }
 
 async function poop() {
-    const poopButton = document.querySelector(".poop--button");
-    if (!(poopButton instanceof HTMLParagraphElement)) {
-        console.error(`failed to find poop-button element.`);
+    const poopAddBtn = document.querySelector(".poop-add--button");
+    if (!(poopAddBtn instanceof HTMLParagraphElement)) {
+        console.error(`failed to find poop-add--button element.`);
         return;
     }
-    poopButton.addEventListener("click", async () => {
-        await verifyStatus();
-    });
+    const poopSubBtn = document.querySelector(".poop-sub--button");
+    if (!(poopSubBtn instanceof HTMLParagraphElement)) {
+        console.error(`failed to find poop-sub--button element.`);
+        return;
+    }
+
+    poopAddBtn.addEventListener("click", async () => {});
+    poopSubBtn.addEventListener("click", async () => {});
 }
 
 async function loading() {}
@@ -85,6 +94,7 @@ async function fetchVal() {
  */
 function checkStorageHelper(key, item) {
     const getInfo = localStorage.getItem(key);
+
     if (getInfo === null) {
         if (typeof item === "number") {
             localStorage.setItem(key, item.toString());
@@ -116,6 +126,23 @@ async function checkStorage() {
     checkStorageHelper("failed_total", val.failed_total);
 }
 
+/** @returns {boolean} */
+function isPictureExpired() {
+    const photoExpireDate = localStorage.getItem("picture_timestamp");
+    if (photoExpireDate === null) {
+        const now = new Date().setHours(0, 0, 0, 0).toString();
+        localStorage.setItem("picture_timestamp", now);
+        return true;
+    }
+    const past = new Date(parseInt(photoExpireDate)).getTime();
+    const now = new Date().setHours(0, 0, 0, 0);
+    if (past < now) {
+        localStorage.setItem("picture_timestamp", now.toString());
+        return true;
+    }
+    return false;
+}
+
 async function profile() {
     const profileContainer = document.querySelector(".profile--container");
     if (!(profileContainer instanceof HTMLDivElement)) {
@@ -145,10 +172,14 @@ async function profile() {
         if (getPic !== null) {
             const image = new Image();
             const cacheBustedSrc = `${getPic}?t=${new Date().getTime()}`;
-            image.src = cacheBustedSrc;
-            image.onload = () => {
-                profilePic.src = cacheBustedSrc;
-            };
+            if (isPictureExpired()) {
+                image.src = cacheBustedSrc;
+                image.onload = () => {
+                    profilePic.src = cacheBustedSrc;
+                };
+            } else {
+                profilePic.src = getPic;
+            }
         }
         profilePicContainer.style.display = "flex";
         googleSignIn.style.display = "none";
