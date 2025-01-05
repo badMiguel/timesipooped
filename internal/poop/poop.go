@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"log"
 	"net/http"
+	"time"
 
 	_ "github.com/mattn/go-sqlite3"
 	"timesipooped.fyi/internal/auth"
@@ -56,6 +57,52 @@ func PoopRoute(db *sql.DB) http.HandlerFunc {
 }
 
 func AddPoop(w http.ResponseWriter, r *http.Request, db *sql.DB, userId string) {
+	var poopTotal int
+	for i := 0; i < 10; i++ {
+		err := db.QueryRow(`SELECT poopTotal FROM users WHERE userId = ?`, userId).Scan(&poopTotal)
+		if err != nil {
+			log.Printf("Error finding user's <%v> poop total. Trying again(%d)\n", userId, i)
+			if i == 9 {
+				log.Printf("Max attempt. Cannot query user <%v>\n", userId)
+				http.Error(w, "Server cannot find your poop data!", http.StatusInternalServerError)
+				return
+			}
+			time.Sleep(time.Duration(i/2) * time.Second)
+			continue
+		}
+		poopTotal++
+		break
+	}
+
+	for i := 0; i < 10; i++ {
+		_, err := db.Exec(`INSERT INTO poop (userId, success) VALUES (?, ?)`, userId, 1)
+		if err != nil {
+			log.Printf("Error adding user's <%v> poop. Trying again(%d)\n", userId, i)
+			if i == 9 {
+				log.Printf("Max attempt. Cannot add user's <%v> poop.\n", userId)
+				http.Error(w, "Failed to add your poop :(", http.StatusInternalServerError)
+				return
+			}
+			time.Sleep(time.Duration(i/2) * time.Second)
+			continue
+		}
+		break
+	}
+
+	for i := 0; i < 10; i++ {
+		_, err := db.Exec(`UPDATE users SET poopTotal = ? WHERE userId = ?`, poopTotal, userId)
+		if err != nil {
+			log.Printf("Error updating user's <%v> poop total. Trying again(%d)\n", userId, i)
+			if i == 9 {
+				log.Printf("Max attempt. Cannot add user's <%v> poop.\n", userId)
+				http.Error(w, "Failed to add your poop :(", http.StatusInternalServerError)
+				return
+			}
+			time.Sleep(time.Duration(i/2) * time.Second)
+			continue
+		}
+		break
+	}
 }
 
 func AddFailedPoop(w http.ResponseWriter, r *http.Request, db *sql.DB, userId string) {
@@ -66,3 +113,5 @@ func SubPoop(w http.ResponseWriter, r *http.Request, db *sql.DB, userId string) 
 
 func SubFailedPoop(w http.ResponseWriter, r *http.Request, db *sql.DB, userId string) {
 }
+
+// failedTotal

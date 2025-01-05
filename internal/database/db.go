@@ -32,9 +32,10 @@ type UserInfo struct {
 }
 
 type PoopSchema struct {
-	poopId int
-	date   time.Time
-	userId string
+	poopId  int
+	date    time.Time
+	userId  string
+	success bool
 }
 
 // user info for client
@@ -69,7 +70,8 @@ func initialize(db *sql.DB) error {
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS poop (
         poopId INTEGER PRIMARY KEY AUTOINCREMENT,
         date DATETIME DEFAULT CURRENT_TIMESTAMP,
-        userId INTEGER,
+        userId TEXT,
+        success INTEGER,
         FOREIGN KEY(userId) REFERENCES users(userId) ON DELETE CASCADE
     )`)
 	if err != nil {
@@ -81,18 +83,18 @@ func initialize(db *sql.DB) error {
 }
 
 func InitializeDB(db *sql.DB) {
-	for i := 0; i < 10; {
+	for i := 0; i < 10; i++ {
 		if err := initialize(db); err == nil {
 			log.Println("Successfully connected to the database")
 			return
 		} else {
 			log.Println(err)
 		}
-		i++
 		log.Printf("Attempt %d failed. Trying again...\n", i)
-		if i == 10 {
+		if i == 9 {
 			panic("Maximum attempts reached. Could not connect to DB")
 		}
+		time.Sleep(time.Duration(i/2) * time.Second)
 	}
 }
 
@@ -122,7 +124,7 @@ func updateDetails(db *sql.DB, userInfo *UserInfo) error {
 	log.Printf("User <%s> already exists.", userInfo.Id)
 
 	_, err := db.Exec(`
-        UPDATE  users SET email=?, givenName=?, familyName=?, picture=? WHERE userId=?`,
+        UPDATE users SET email=?, givenName=?, familyName=?, picture=? WHERE userId=?`,
 		userInfo.Email, userInfo.GivenName, userInfo.FamilyName, userInfo.Picture, userInfo.Id,
 	)
 	if err != nil {
