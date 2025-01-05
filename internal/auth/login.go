@@ -136,7 +136,7 @@ func HandleCallback(authConf *OAuthConfig, db *sql.DB) http.HandlerFunc {
 	}
 }
 
-func verifyToken(r *http.Request) (*http.Response, string, error) {
+func VerifyToken(r *http.Request) (*http.Response, string, error) {
 	user_id, err := r.Cookie("user_id")
 	if err != nil {
 		return nil, "", fmt.Errorf("Error getting user_id cookie \nError:\n%v\n\n", err)
@@ -163,7 +163,7 @@ func HandleStatus(authConf *OAuthConfig) http.HandlerFunc {
 			return
 		}
 
-		resp, user_id, err := verifyToken(r)
+		resp, user_id, err := VerifyToken(r)
 		if err != nil {
 			log.Printf("Error verifying token: %v\n", err)
 			http.Error(w, "Failed to retrieve user id", http.StatusForbidden)
