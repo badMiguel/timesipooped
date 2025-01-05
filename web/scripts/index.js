@@ -15,6 +15,8 @@ function authError() {
     console.log("not authenticated");
 }
 
+function updateValueError() {}
+
 /**
  * @returns {Promise<boolean>}
  */
@@ -36,6 +38,26 @@ async function verifyStatus() {
     return true;
 }
 
+/**
+ * @param {boolean} isPoop
+ * @param {boolean} toAdd
+ */
+async function updateValue(isPoop, toAdd) {
+    try {
+        let fetchUrl = `http://localhost:8081/${isPoop ? "poop" : "poop/failed"}/${toAdd ? "add" : "sub"}`;
+        const response = await fetch(fetchUrl, {
+            method: "POST",
+            credentials: "include",
+        });
+    } catch (err) {
+        console.error(
+            `Failed ${toAdd ? "add" : "subtract"} <${isPoop ? "poop" : "failed poop"}> value: ${err}`
+        );
+        updateValueError();
+        return;
+    }
+}
+
 async function failedPoop() {
     const fPoopAddBtn = document.querySelector(".failed-poop-add--button");
     if (!(fPoopAddBtn instanceof HTMLParagraphElement)) {
@@ -47,8 +69,12 @@ async function failedPoop() {
         console.error(`failed to find failed-poop-sub--button element.`);
         return;
     }
-    fPoopAddBtn.addEventListener("click", () => {});
-    fPoopSubBtn.addEventListener("click", () => {});
+    fPoopAddBtn.addEventListener("click", async () => {
+        await updateValue(false, true);
+    });
+    fPoopSubBtn.addEventListener("click", async () => {
+        await updateValue(false, false);
+    });
 }
 
 async function poop() {
@@ -63,8 +89,12 @@ async function poop() {
         return;
     }
 
-    poopAddBtn.addEventListener("click", async () => {});
-    poopSubBtn.addEventListener("click", async () => {});
+    poopAddBtn.addEventListener("click", async () => {
+        await updateValue(true, true);
+    });
+    poopSubBtn.addEventListener("click", async () => {
+        await updateValue(true, false);
+    });
 }
 
 async function loading() {}
