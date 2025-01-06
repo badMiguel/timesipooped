@@ -177,13 +177,13 @@ func HandleStatus(authConf *OAuthConfig) http.HandlerFunc {
 		resp, user_id, err := VerifyToken(r)
 		if err != nil {
 			log.Printf("Error verifying token: %v\n", err)
-			http.Error(w, "Failed to retrieve user id", http.StatusForbidden)
+			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
 
 		if resp.StatusCode != http.StatusOK {
 			log.Printf("Invalid access token of user <%v>\nError:\n%v\n\n", user_id, err)
-			http.Error(w, "Invalid access token", http.StatusForbidden)
+			w.WriteHeader(http.StatusForbidden)
 			return
 		}
 	}
