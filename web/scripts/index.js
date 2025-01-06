@@ -11,14 +11,43 @@
  * }} UpdatedPoop
  */
 
-function fetchError() {}
+/** @param {string} error */
+function showError(error) {
+    const errorBlur = document.querySelector(".error--blur");
+    if (!(errorBlur instanceof HTMLDivElement)) {
+        console.error(`failed to find error--blur element.`);
+        return;
+    }
+    const errorContainer = document.querySelector(".error--container");
+    if (!(errorContainer instanceof HTMLDivElement)) {
+        console.error(`failed to find error--container element.`);
+        return;
+    }
+    const errorDesc = document.querySelector(".error--desc");
+    if (!(errorDesc instanceof HTMLParagraphElement)) {
+        console.error(`failed to find error--desc element.`);
+        return;
+    }
+    const errorClose = document.querySelector(".error--close");
+    if (!(errorClose instanceof HTMLParagraphElement)) {
+        console.error(`failed to find error--close element.`);
+        return;
+    }
 
-function authError() {
-    // TODO
-    console.log("not authenticated");
+    errorDesc.innerText = error;
+    errorBlur.style.visibility = "visible";
+    errorContainer.style.visibility = "visible";
+
+    errorBlur.addEventListener("click", () => {
+        errorBlur.style.visibility = "hidden";
+        errorContainer.style.visibility = "hidden";
+    });
+
+    errorClose.addEventListener("click", () => {
+        errorBlur.style.visibility = "hidden";
+        errorContainer.style.visibility = "hidden";
+    });
 }
-
-function updateValueError() {}
 
 /**
  * @returns {Promise<boolean>}
@@ -29,16 +58,39 @@ async function verifyStatus() {
             method: "GET",
             credentials: "include",
         });
-        if (!response.ok) {
-            authError();
+        if (response.status === 401) {
+            showError("Please log in to save your poop progress");
+            return false;
+        } else if (response.status === 403) {
+            showError("");
             return false;
         }
     } catch (err) {
         console.log(err);
-        fetchError();
+        showError();
         return false;
     }
     return true;
+}
+
+/** @param {number} val */
+function updateFailedCounter(val) {
+    const failedCounter = document.querySelector(".failed-poop--counter");
+    if (!(failedCounter instanceof HTMLHeadingElement)) {
+        console.error(`failed to find failed-poop--counter element.`);
+        return;
+    }
+    failedCounter.innerText = val.toString();
+}
+
+/** @param {number} val */
+function updatePoopCounter(val) {
+    const poopCounter = document.querySelector(".poop--counter");
+    if (!(poopCounter instanceof HTMLHeadingElement)) {
+        console.error(`failed to find poop--counter element.`);
+        return;
+    }
+    poopCounter.innerText = val.toString();
 }
 
 /**
@@ -61,19 +113,9 @@ async function updateValue(isPoop, toAdd) {
         console.error(
             `Failed ${toAdd ? "add" : "subtract"} <${isPoop ? "poop" : "failed poop"}> value: ${err}`
         );
-        updateValueError();
+        showError();
         return;
     }
-}
-
-/** @param {number} val */
-function updateFailedCounter(val) {
-    const failedCounter = document.querySelector(".failed-poop--counter");
-    if (!(failedCounter instanceof HTMLHeadingElement)) {
-        console.error(`failed to find failed-poop--counter element.`);
-        return;
-    }
-    failedCounter.innerText = val.toString();
 }
 
 async function failedPoop() {
@@ -99,16 +141,6 @@ async function failedPoop() {
             updateFailedCounter(val.failedTotal);
         }
     });
-}
-
-/** @param {number} val */
-function updatePoopCounter(val) {
-    const poopCounter = document.querySelector(".poop--counter");
-    if (!(poopCounter instanceof HTMLHeadingElement)) {
-        console.error(`failed to find poop--counter element.`);
-        return;
-    }
-    poopCounter.innerText = val.toString();
 }
 
 async function poop() {
@@ -153,7 +185,7 @@ async function fetchVal() {
         return data;
     } catch (err) {
         console.error(err);
-        fetchError();
+        showError();
         return null;
     }
 }
