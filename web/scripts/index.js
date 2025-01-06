@@ -1,7 +1,5 @@
 /**
  * @typedef {{
- * family_name: string,
- * given_name: string,
  * picture: string,
  * poopTotal: number,
  * failedTotal: number,
@@ -160,43 +158,24 @@ async function fetchVal() {
     }
 }
 
-/**
- * @param  {string} key
- * @param  {string | number} item
- */
-function checkStorageHelper(key, item) {
-    const getInfo = localStorage.getItem(key);
-
-    if (getInfo === null) {
-        if (typeof item === "number") {
-            localStorage.setItem(key, item.toString());
-        } else {
-            localStorage.setItem(key, item);
-        }
-        return;
-    }
-    if (getInfo !== item) {
-        if (typeof item === "number") {
-            localStorage.setItem(key, item.toString());
-        } else {
-            localStorage.setItem(key, item);
-        }
-        return;
-    }
-}
-
 async function checkStorage() {
     const val = await fetchVal();
     if (val === null) {
         return;
     }
 
-    checkStorageHelper("given_name", val.given_name);
-    checkStorageHelper("family_name", val.family_name);
-    checkStorageHelper("picture", val.picture);
-
     updatePoopCounter(val.poopTotal);
     updateFailedCounter(val.failedTotal);
+
+    const getPicture = localStorage.getItem("picture");
+    if (getPicture === null) {
+        localStorage.setItem("picture", val.picture);
+        return;
+    }
+    if (getPicture !== val.picture) {
+        localStorage.setItem("picture", val.picture);
+        return;
+    }
 }
 
 /** @returns {boolean} */

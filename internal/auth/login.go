@@ -128,18 +128,17 @@ func HandleCallback(authConf *OAuthConfig, db *sql.DB) http.HandlerFunc {
 		log.Println("User data received")
 
 		if !info.VerifiedEmail {
-			log.Printf("User email <%v> is not verified", info.Email)
+			log.Printf("User <%v> email is not verified", info.Id)
 			http.Error(w, "Email is not verified", http.StatusUnauthorized)
 			return
 		}
 		log.Println("User email is verified")
 
 		http.SetCookie(w, generateCookie("access_token", accessToken))
-        http.SetCookie(w, generateCookie("refresh_token", refreshToken))
 		http.SetCookie(w, generateCookie("user_id", info.Id))
 		http.Redirect(w, r, "http://localhost:8080", http.StatusSeeOther)
 
-		err = database.IsNewUser(db, &info)
+		err = database.IsNewUser(db, &info, refreshToken, accessToken)
 		if err != nil {
 			log.Printf("Error checking if user is new: %v\n", err)
 			http.Error(w, "Failed to check user status", http.StatusInternalServerError)

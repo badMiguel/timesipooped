@@ -13,9 +13,6 @@ import (
 
 type UserSchema struct {
 	userId      string
-	email       string
-	givenName   string
-	familyName  string
 	picture     string
 	joined      time.Time
 	poopTotal   int
@@ -24,9 +21,6 @@ type UserSchema struct {
 
 type UserInfo struct {
 	Id            string `json:"id"`
-	Email         string `json:"email"`
-	FamilyName    string `json:"family_name"`
-	GivenName     string `json:"given_name"`
 	Picture       string `json:"picture"`
 	VerifiedEmail bool   `json:"verified_email"`
 }
@@ -40,8 +34,6 @@ type PoopSchema struct {
 
 // user info for client
 type ClientUserInfo struct {
-	FamilyName  string `json:"family_name"`
-	GivenName   string `json:"given_name"`
 	Picture     string `json:"picture"`
 	PoopTotal   int    `json:"poopTotal"`
 	FailedTotal int    `json:"failedTotal"`
@@ -54,10 +46,9 @@ func initialize(db *sql.DB) error {
 
 	_, err := db.Exec(`CREATE TABLE IF NOT EXISTS users (
         userId TEXT PRIMARY KEY,
-        email TEXT UNIQUE,
-        givenName TEXT, 
-        familyName TEXT, 
         picture TEXT,
+        accessToken TEXT,
+        refreshToken TEXT,
         joined DATETIME DEFAULT CURRENT_TIMESTAMP,
         poopTotal INTEGER DEFAULT 0,
         failedTotal INTEGER DEFAULT 0
@@ -98,19 +89,27 @@ func InitializeDB(db *sql.DB) {
 	}
 }
 
-func addUser(db *sql.DB, userInfo *UserInfo) error {
+func addUser(db *sql.DB, userInfo *UserInfo, accessToken, refreshToken string) error {
 	log.Printf(
 		"User <%s> is new. Adding user to database...",
 		userInfo.Id,
 	)
 
-	_, err := db.Exec(`
-        INSERT INTO users (userId, email, givenName, familyName, picture)
-        VALUES (?, ?, ?, ?, ?)`,
-		userInfo.Id, userInfo.Email, userInfo.GivenName, userInfo.FamilyName, userInfo.Picture,
-	)
-	if err != nil {
-		return fmt.Errorf("Failed adding new user to database\nError:\n%v\n\n", err)
+	for i := 0; i < 10; i++ {
+		_, err := db.Exec(`
+        INSERT INTO users (userId, picture, accessToken, refreshToken)
+        VALUES (?, ?, ?, ?)`,
+			userInfo.Id, userInfo.Picture, accessToken, refreshToken,
+		)
+		if err != nil {
+			log.Printf("Error adding new user to DB... Trying again (%d)", i)
+			if i == 9 {
+				return fmt.Errorf("Failed adding new user to database\nError:\n%v\n\n", err)
+			}
+			time.Sleep(time.Duration(i/2) * time.Second)
+			continue
+		}
+		break
 	}
 
 	log.Printf(
@@ -120,17 +119,28 @@ func addUser(db *sql.DB, userInfo *UserInfo) error {
 	return nil
 }
 
-func updateDetails(db *sql.DB, userInfo *UserInfo) error {
+func updateDetails(db *sql.DB, userInfo *UserInfo, accessToken, refreshToken string) error {
 	log.Printf("User <%s> already exists.", userInfo.Id)
 
-	_, err := db.Exec(`
-        UPDATE users SET email=?, givenName=?, familyName=?, picture=? WHERE userId=?`,
-		userInfo.Email, userInfo.GivenName, userInfo.FamilyName, userInfo.Picture, userInfo.Id,
-	)
-	if err != nil {
-		return fmt.Errorf("Failed updating user data to database\nError:\n%v\n\n", err)
+	for i := 0; i < 10; i++ {
+		_, err := db.Exec(`
+            UPDATE users 
+            SET picture = ?,
+                accessToken = ?,
+                refreshToken = ?
+            WHERE userId=?`,
+			userInfo.Picture, accessToken, refreshToken, userInfo.Id,
+		)
+		if err != nil {
+			log.Printf("Error updating user details... Trying again (%d)", i)
+			if i == 9 {
+				return fmt.Errorf("Failed updating user data to database\nError:\n%v\n\n", err)
+			}
+			time.Sleep(time.Duration(i/2) * time.Second)
+			continue
+		}
+		break
 	}
-
 	log.Printf(
 		"Successfully updated user <%s> data",
 		userInfo.Id,
@@ -138,29 +148,19 @@ func updateDetails(db *sql.DB, userInfo *UserInfo) error {
 	return nil
 }
 
-func IsNewUser(db *sql.DB, userInfo *UserInfo) error {
-	var (
-		userId      string
-		email       string
-		givenName   string
-		familyName  string
-		picture     string
-		joined      time.Time
-		poopTotal   int
-		failedTotal int
-	)
-
-	err := db.QueryRow(`SELECT * FROM users WHERE userId = ?`, userInfo.Id).Scan(
-		&userId, &email, &givenName, &familyName, &picture, &joined, &poopTotal, &failedTotal,
-	)
+func IsNewUser(db *sql.DB, userInfo *UserInfo, accessToken, refreshToken string) error {
+	var userId string
+	err := db.QueryRow(
+		`SELECT userId FROM users WHERE userId = ?`, userInfo.Id,
+	).Scan(&userId)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return addUser(db, userInfo)
+			return addUser(db, userInfo, accessToken, refreshToken)
 		} else {
 			return err
 		}
 	}
-	return updateDetails(db, userInfo)
+	return updateDetails(db, userInfo, accessToken, refreshToken)
 }
 
 func FetchData(db *sql.DB) http.HandlerFunc {
@@ -178,19 +178,17 @@ func FetchData(db *sql.DB) http.HandlerFunc {
 		}
 
 		var (
-			givenName   string
-			familyName  string
 			picture     string
 			poopTotal   int
 			failedTotal int
 		)
 		err = db.QueryRow(`
-            SELECT givenName, familyName, picture, poopTotal, failedTotal
+            SELECT picture, poopTotal, failedTotal
             FROM users 
             WHERE userId = ?`,
 			userIdCookie.Value,
 		).Scan(
-			&givenName, &familyName, &picture, &poopTotal, &failedTotal,
+			&picture, &poopTotal, &failedTotal,
 		)
 		if err != nil {
 			log.Printf("Error checking user <%s> data: %v\n", userIdCookie.Value, err)
@@ -199,8 +197,6 @@ func FetchData(db *sql.DB) http.HandlerFunc {
 		}
 
 		clientUserInfo := &ClientUserInfo{
-			GivenName:   givenName,
-			FamilyName:  familyName,
 			Picture:     picture,
 			PoopTotal:   poopTotal,
 			FailedTotal: failedTotal,
