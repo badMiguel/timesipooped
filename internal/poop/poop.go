@@ -3,7 +3,6 @@ package poop
 import (
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -17,28 +16,21 @@ type JsonResponse struct {
 	FailedTotal int `json:"failedTotal"`
 }
 
-func generateJsonBytes(pTotal int, fTotal int) (*[]byte, error) {
+func generateResponse(w http.ResponseWriter, code, pTotal, fTotal int) {
 	resp := &JsonResponse{
 		PoopTotal:   pTotal,
 		FailedTotal: fTotal,
 	}
 	jsonBytes, err := json.Marshal(resp)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to encode json data: %v\n", err)
-	}
-	return &jsonBytes, nil
-}
-
-func generateResponse(w http.ResponseWriter, pTotal, fTotal int) {
-	jsonBytes, err := generateJsonBytes(pTotal, fTotal)
-	if err != nil {
-		log.Println(err)
+		log.Printf("Failed to encode json data: %v\n", err)
 		http.Error(w, "Failed processing data", http.StatusInternalServerError)
-	} else {
-		w.WriteHeader(http.StatusOK)
-		w.Header().Set("Content-Type", "application/json")
-		w.Write(*jsonBytes)
+		return
 	}
+
+	w.WriteHeader(code)
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(jsonBytes)
 }
 
 func PoopRoute(db *sql.DB) http.HandlerFunc {
@@ -109,7 +101,7 @@ func AddPoop(w http.ResponseWriter, r *http.Request, db *sql.DB, userId string, 
 			log.Printf("Error adding user's <%v> poop. Trying again(%d)\n", userId, i)
 			if i == 9 {
 				log.Printf("Max attempt. Cannot add user's <%v> poop: %v\n", userId, err)
-				http.Error(w, "Failed to add your poop :(", http.StatusInternalServerError)
+				generateResponse(w, http.StatusInternalServerError, poopTotal, failedTotal)
 				return
 			}
 			time.Sleep(time.Duration(i/2) * time.Second)
@@ -124,7 +116,7 @@ func AddPoop(w http.ResponseWriter, r *http.Request, db *sql.DB, userId string, 
 			log.Printf("Error updating user's <%v> poop total. Trying again(%d)\n", userId, i)
 			if i == 9 {
 				log.Printf("Max attempt. Cannot add user's <%v> poop: %v\n", userId, err)
-				http.Error(w, "Failed to add your poop :(", http.StatusInternalServerError)
+				generateResponse(w, http.StatusInternalServerError, poopTotal, failedTotal)
 				return
 			}
 			time.Sleep(time.Duration(i/2) * time.Second)
@@ -133,7 +125,7 @@ func AddPoop(w http.ResponseWriter, r *http.Request, db *sql.DB, userId string, 
 		break
 	}
 
-	generateResponse(w, poopTotal+1, failedTotal)
+	generateResponse(w, http.StatusOK, poopTotal+1, failedTotal)
 }
 
 func AddFailedPoop(w http.ResponseWriter, r *http.Request, db *sql.DB, userId string, poopTotal, failedTotal int) {
@@ -143,7 +135,7 @@ func AddFailedPoop(w http.ResponseWriter, r *http.Request, db *sql.DB, userId st
 			log.Printf("Error adding user's <%v> poop. Trying again(%d)\n", userId, i)
 			if i == 9 {
 				log.Printf("Max attempt. Cannot add user's <%v> poop: %v\n", userId, err)
-				http.Error(w, "Failed to add your failed poop :(", http.StatusInternalServerError)
+				generateResponse(w, http.StatusInternalServerError, poopTotal, failedTotal)
 				return
 			}
 			time.Sleep(time.Duration(i/2) * time.Second)
@@ -159,6 +151,7 @@ func AddFailedPoop(w http.ResponseWriter, r *http.Request, db *sql.DB, userId st
 			if i == 9 {
 				log.Printf("Max attempt. Cannot add user's <%v> failed poop: %v\n", userId, err)
 				http.Error(w, "Failed to add your failed poop :(", http.StatusInternalServerError)
+				generateResponse(w, http.StatusInternalServerError, poopTotal, failedTotal)
 				return
 			}
 			time.Sleep(time.Duration(i/2) * time.Second)
@@ -167,12 +160,12 @@ func AddFailedPoop(w http.ResponseWriter, r *http.Request, db *sql.DB, userId st
 		break
 	}
 
-	generateResponse(w, poopTotal, failedTotal+1)
+	generateResponse(w, http.StatusOK, poopTotal, failedTotal+1)
 }
 
 func SubPoop(w http.ResponseWriter, r *http.Request, db *sql.DB, userId string, poopTotal, failedTotal int) {
 	if poopTotal < 1 {
-		http.Error(w, "Stop  - You haven't pooped yet!", http.StatusTeapot)
+		generateResponse(w, http.StatusTeapot, poopTotal, failedTotal)
 		return
 	}
 
@@ -190,7 +183,7 @@ func SubPoop(w http.ResponseWriter, r *http.Request, db *sql.DB, userId string, 
 			log.Printf("Error subing user's <%v> poop. Trying again(%d)\n", userId, i)
 			if i == 9 {
 				log.Printf("Max attempt. Cannot sub user's <%v> poop: %v\n", userId, err)
-				http.Error(w, "Failed to subtract your poop :(", http.StatusInternalServerError)
+				generateResponse(w, http.StatusInternalServerError, poopTotal, failedTotal)
 				return
 			}
 			time.Sleep(time.Duration(i/2) * time.Second)
@@ -205,7 +198,7 @@ func SubPoop(w http.ResponseWriter, r *http.Request, db *sql.DB, userId string, 
 			log.Printf("Error updating user's <%v> poop total. Trying again(%d)\n", userId, i)
 			if i == 9 {
 				log.Printf("Max attempt. Cannot sub user's <%v> poop: %v\n", userId, err)
-				http.Error(w, "Failed to subtract your poop :(", http.StatusInternalServerError)
+				generateResponse(w, http.StatusInternalServerError, poopTotal, failedTotal)
 				return
 			}
 			time.Sleep(time.Duration(i/2) * time.Second)
@@ -214,12 +207,12 @@ func SubPoop(w http.ResponseWriter, r *http.Request, db *sql.DB, userId string, 
 		break
 	}
 
-	generateResponse(w, poopTotal-1, failedTotal)
+	generateResponse(w, http.StatusOK, poopTotal-1, failedTotal)
 }
 
 func SubFailedPoop(w http.ResponseWriter, r *http.Request, db *sql.DB, userId string, poopTotal, failedTotal int) {
 	if failedTotal < 1 {
-		http.Error(w, "Stop  - You haven't pooped yet!", http.StatusTeapot)
+		generateResponse(w, http.StatusTeapot, poopTotal, failedTotal)
 		return
 	}
 
@@ -237,7 +230,7 @@ func SubFailedPoop(w http.ResponseWriter, r *http.Request, db *sql.DB, userId st
 			log.Printf("Error subing user's <%v> failed poop. Trying again(%d)\n", userId, i)
 			if i == 9 {
 				log.Printf("Max attempt. Cannot sub user's <%v> failed poop: %v\n", userId, err)
-				http.Error(w, "Failed to subtract your failed poop :(", http.StatusInternalServerError)
+				generateResponse(w, http.StatusInternalServerError, poopTotal, failedTotal)
 				return
 			}
 			time.Sleep(time.Duration(i/2) * time.Second)
@@ -252,7 +245,7 @@ func SubFailedPoop(w http.ResponseWriter, r *http.Request, db *sql.DB, userId st
 			log.Printf("Error updating user's <%v> failed poop total. Trying again(%d)\n", userId, i)
 			if i == 9 {
 				log.Printf("Max attempt. Cannot sub user's <%v> failed poop: %v\n", userId, err)
-				http.Error(w, "Failed to subtract your failed poop :(", http.StatusInternalServerError)
+				generateResponse(w, http.StatusInternalServerError, poopTotal, failedTotal)
 				return
 			}
 			time.Sleep(time.Duration(i/2) * time.Second)
@@ -261,5 +254,5 @@ func SubFailedPoop(w http.ResponseWriter, r *http.Request, db *sql.DB, userId st
 		break
 	}
 
-	generateResponse(w, poopTotal, failedTotal-1)
+	generateResponse(w, http.StatusOK, poopTotal, failedTotal-1)
 }
