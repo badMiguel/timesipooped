@@ -1,6 +1,7 @@
 *.sqlite3
 .env
 tmp/
+vendor/
 
 # Logs
 logs
