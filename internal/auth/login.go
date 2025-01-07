@@ -149,8 +149,85 @@ func HandleCallback(authConf *OAuthConfig, db *sql.DB) http.HandlerFunc {
 	}
 }
 
-// TODO
-func refreshAccessToken() {
+func refreshAccessToken(w http.ResponseWriter, userId string, authConf *OAuthConfig, db *sql.DB) error {
+	log.Println("Initiating access token refresh...")
+	var refreshToken string
+	for i := 0; i < 10; i++ {
+		err := db.QueryRow(
+			`SELECT refreshToken FROM users WHERE userId = ?;`, userId,
+		).Scan(&refreshToken)
+
+		if err != nil {
+			log.Printf("Error when querying user <%s>... Trying again(%d)", userId, i)
+			if i == 9 {
+				return fmt.Errorf("Failed to query user <%s>: %v\n", userId, err)
+			}
+			time.Sleep(time.Duration(i/2) * time.Second)
+			continue
+		}
+		break
+	}
+
+	resp, err := http.PostForm("https://oauth2.googleapis.com/token", url.Values{
+		"client_id":     {authConf.ClientId},
+		"client_secret": {authConf.ClientSecret},
+		"refresh_token": {refreshToken},
+		"grant_type":    {"refresh_token"},
+	})
+	if err != nil || resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("Error refreshing access token: %v\n", err)
+	}
+
+	var tokenData map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&tokenData); err != nil {
+		return fmt.Errorf("Error decoding response: %v\n", err)
+	}
+
+	accessToken, ok := tokenData["access_token"].(string)
+	if !ok {
+		return fmt.Errorf("Decoded access token is invalid\n")
+	}
+
+	for i := 0; i < 10; i++ {
+		_, err := db.Exec(
+			`UPDATE users SET accessToken = ? WHERE userId = ?`, accessToken, userId,
+		)
+		if err != nil {
+			log.Printf("Error updating new access token... Trying again(%d)\n", i)
+			if i == 9 {
+				return fmt.Errorf(
+					"Error updating new access token of user <%s>\n", userId,
+				)
+			}
+			time.Sleep(time.Duration(i/2) * time.Second)
+			continue
+		}
+		break
+	}
+
+	http.SetCookie(w, generateCookie("access_token", accessToken))
+	log.Println("Successfully refreshed access token")
+
+	return nil
+}
+
+func logoutHelper(w http.ResponseWriter) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     "access_token",
+		Value:    "",
+		Secure:   false, // TODO TRUE IN PROD
+		HttpOnly: true,
+		Expires:  time.Unix(0, 0),
+		Path:     "/",
+	})
+	http.SetCookie(w, &http.Cookie{
+		Name:     "user_id",
+		Value:    "",
+		Secure:   false, // TODO TRUE IN PROD
+		HttpOnly: true,
+		Expires:  time.Unix(0, 0),
+		Path:     "/",
+	})
 }
 
 func VerifyToken(r *http.Request) (*http.Response, string, error) {
@@ -173,7 +250,7 @@ func VerifyToken(r *http.Request) (*http.Response, string, error) {
 	return resp, user_id.Value, nil
 }
 
-func HandleStatus(authConf *OAuthConfig) http.HandlerFunc {
+func HandleStatus(authConf *OAuthConfig, db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			http.Error(w, "Invalid method", http.StatusMethodNotAllowed)
@@ -183,34 +260,28 @@ func HandleStatus(authConf *OAuthConfig) http.HandlerFunc {
 		resp, user_id, err := VerifyToken(r)
 		if err != nil {
 			log.Printf("Error verifying token: %v\n", err)
+
+			logoutHelper(w)
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
 
 		if resp.StatusCode != http.StatusOK {
 			log.Printf("Invalid access token of user <%v>\n", user_id)
-			w.WriteHeader(http.StatusForbidden)
-			return
+			log.Println("Will attempt to refresh access token")
+
+			err := refreshAccessToken(w, user_id, authConf, db)
+			if err != nil {
+				logoutHelper(w)
+				log.Println(err)
+				w.WriteHeader(http.StatusForbidden)
+
+			}
 		}
 	}
 }
 
 func HandleLogout(w http.ResponseWriter, r *http.Request) {
-	http.SetCookie(w, &http.Cookie{
-		Name:     "access_token",
-		Value:    "",
-		Secure:   false, // TODO TRUE IN PROD
-		HttpOnly: true,
-		Expires:  time.Unix(0, 0),
-		Path:     "/",
-	})
-	http.SetCookie(w, &http.Cookie{
-		Name:     "user_id",
-		Value:    "",
-		Secure:   false, // TODO TRUE IN PROD
-		HttpOnly: true,
-		Expires:  time.Unix(0, 0),
-		Path:     "/",
-	})
+	logoutHelper(w)
 	w.WriteHeader(http.StatusOK)
 }

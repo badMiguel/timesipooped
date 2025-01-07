@@ -51,13 +51,13 @@ func main() {
 	authConf := auth.NewOAuthConfig()
 	mux.HandleFunc("/auth/login", auth.HandleLogin(authConf))
 	mux.HandleFunc("/auth/login/callback", auth.HandleCallback(authConf, db))
-	mux.HandleFunc("/auth/status", auth.HandleStatus(authConf))
+	mux.HandleFunc("/auth/status", auth.HandleStatus(authConf, db))
 	mux.HandleFunc("/auth/logout", auth.HandleLogout)
 
-	mux.Handle("/poop/add", http.StripPrefix("/poop", poop.PoopRoute(db)))
-	mux.Handle("/poop/failed/add", http.StripPrefix("/poop", poop.PoopRoute(db)))
-	mux.Handle("/poop/sub", http.StripPrefix("/poop", poop.PoopRoute(db)))
-	mux.Handle("/poop/failed/sub", http.StripPrefix("/poop", poop.PoopRoute(db)))
+	mux.Handle("/poop/add", http.StripPrefix("/poop", poop.PoopRoute(db, authConf)))
+	mux.Handle("/poop/failed/add", http.StripPrefix("/poop", poop.PoopRoute(db, authConf)))
+	mux.Handle("/poop/sub", http.StripPrefix("/poop", poop.PoopRoute(db, authConf)))
+	mux.Handle("/poop/failed/sub", http.StripPrefix("/poop", poop.PoopRoute(db, authConf)))
 
 	mux.HandleFunc("/get/user", database.FetchData(db))
 

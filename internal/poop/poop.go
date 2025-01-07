@@ -33,7 +33,7 @@ func generateResponse(w http.ResponseWriter, code, pTotal, fTotal int) {
 	w.Write(jsonBytes)
 }
 
-func PoopRoute(db *sql.DB) http.HandlerFunc {
+func PoopRoute(db *sql.DB, authConf *auth.OAuthConfig) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "Invalid method", http.StatusMethodNotAllowed)
@@ -48,9 +48,12 @@ func PoopRoute(db *sql.DB) http.HandlerFunc {
 		}
 
 		if resp.StatusCode != http.StatusOK {
-			log.Printf("Client is logged not logged in")
-			http.Error(w, "Failed to authenticate", http.StatusForbidden)
-			return
+			err := auth.RefreshAccessToken(w, userId, authConf, db)
+			if err != nil {
+				log.Printf("Client is logged not logged in")
+				http.Error(w, "Failed to authenticate", http.StatusForbidden)
+				return
+			}
 		}
 
 		var poopTotal int

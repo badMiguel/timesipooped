@@ -362,7 +362,6 @@ async function profile() {
 
     let status = await verifyStatus();
     const poopInfo = await checkStorage();
-    console.log(poopInfo, "first");
     if (status) {
         const getPic = localStorage.getItem("picture");
         if (getPic !== null) {
@@ -452,7 +451,6 @@ async function profile() {
 
 async function main() {
     let poopInfo = await profile();
-    console.log(poopInfo);
     if (!poopInfo) {
         const poopTotal = parseInt(localStorage.getItem("poopTotal") || "0");
         const failedTotal = parseInt(localStorage.getItem("failedTotal") || "0");
