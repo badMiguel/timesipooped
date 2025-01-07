@@ -109,15 +109,63 @@ async function updateValue(isPoop, toAdd) {
             method: "POST",
             credentials: "include",
         });
-        if (!response.ok) {
-            throw new Error(`Response not ok. Status code: ${response.status}`);
+        // unauthorized
+        if (response.status === 401) {
+            const getShowLoginPrompt = localStorage.getItem("showLoginPrompt");
+            if (!getShowLoginPrompt) {
+                localStorage.setItem("showLoginPrompt", "true");
+                showError("Please log in to save your poop progress");
+            }
+            let getPoopTotal = localStorage.getItem("poopTotal") || "0";
+            let getFailedTotal = localStorage.getItem("failedTotal") || "0";
+
+            if (isPoop) {
+                if (toAdd) {
+                    getPoopTotal = (parseInt(getPoopTotal) + 1).toString();
+                    localStorage.setItem("poopTotal", getPoopTotal);
+                } else {
+                    if (parseInt(getPoopTotal) < 1) {
+                        return;
+                    }
+                    getPoopTotal = (parseInt(getPoopTotal) - 1).toString();
+                    localStorage.setItem("poopTotal", getPoopTotal);
+                }
+            } else {
+                if (toAdd) {
+                    getFailedTotal = (parseInt(getFailedTotal) + 1).toString();
+                    localStorage.setItem("failedTotal", getFailedTotal);
+                } else {
+                    if (parseInt(getFailedTotal) < 1) {
+                        return;
+                    }
+                    getFailedTotal = (parseInt(getFailedTotal) - 1).toString();
+                    localStorage.setItem("failedTotal", getFailedTotal);
+                }
+            }
+
+            /** @type {UpdatedPoop}*/
+            const val = {
+                poopTotal: parseInt(getPoopTotal),
+                failedTotal: parseInt(getFailedTotal),
+            };
+            return val;
+        }
+        // forbidden
+        if (response.status === 403) {
+            showError("Failed to verify your access.");
+            return;
+        }
+        // server error
+        if (response.status === 500) {
+            showError("Something went wrong with the server.");
+            return;
         }
         return await response.json();
     } catch (err) {
         console.error(
             `Failed ${toAdd ? "add" : "subtract"} <${isPoop ? "poop" : "failed poop"}> value: ${err}`
         );
-        showError();
+        showError("Failed to update your poop :((");
         return;
     }
 }
@@ -135,6 +183,7 @@ async function failedPoop() {
     }
     fPoopAddBtn.addEventListener("click", async () => {
         const val = await updateValue(false, true);
+        console.log(val);
         if (val) {
             updateFailedCounter(val.failedTotal);
         }

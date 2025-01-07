@@ -41,8 +41,14 @@ func PoopRoute(db *sql.DB) http.HandlerFunc {
 		}
 
 		resp, userId, err := auth.VerifyToken(r)
-		if err != nil || resp.StatusCode != http.StatusOK {
-			log.Printf("Failed to verify if client is logged in")
+		if err != nil {
+			log.Printf("Failed to verify if token is valid")
+			http.Error(w, "Failed to authenticate", http.StatusUnauthorized)
+			return
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			log.Printf("Client is logged not logged in")
 			http.Error(w, "Failed to authenticate", http.StatusForbidden)
 			return
 		}
