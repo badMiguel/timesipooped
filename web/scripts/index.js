@@ -3,8 +3,11 @@
  * @typedef {{ poopTotal: number, failedTotal: number }} UpdatedPoop
  */
 
-/** @param {string} error */
-function showError(error) {
+/**
+ * @param {string} desc
+ * @param {string}  [header]
+ * */
+function showPopupMessage(desc, header) {
     const errorBlur = document.querySelector(".error--blur");
     if (!(errorBlur instanceof HTMLDivElement)) {
         console.error(`failed to find error--blur element.`);
@@ -25,8 +28,16 @@ function showError(error) {
         console.error(`failed to find error--close element.`);
         return;
     }
+    const errorHeader = document.querySelector(".error--header");
+    if (!(errorHeader instanceof HTMLHeadingElement)) {
+        console.error(`failed to find error--header element.`);
+        return;
+    }
 
-    errorDesc.innerText = error;
+    if (header) {
+        errorHeader.innerText = header;
+    }
+    errorDesc.innerText = desc;
     errorBlur.style.visibility = "visible";
     errorContainer.style.visibility = "visible";
 
@@ -52,16 +63,19 @@ async function verifyStatus() {
             const getShowLoginPrompt = localStorage.getItem("showLoginPrompt");
             if (!getShowLoginPrompt) {
                 localStorage.setItem("showLoginPrompt", "true");
-                showError("Please log in to save your poop progress");
+                showPopupMessage(
+                    "Please log in to save your poop progress on other devices",
+                    "Hi new user!"
+                );
                 return false;
             }
         } else if (response.status === 403) {
-            showError("Failed to verify your access.");
+            showPopupMessage("Failed to verify your access.");
             return false;
         }
     } catch (err) {
         console.log(err);
-        showError("Failed to verify your access.");
+        showPopupMessage("Failed to verify your access.");
         return false;
     }
     return true;
@@ -104,7 +118,7 @@ async function updateValue(isPoop, toAdd) {
             const getShowLoginPrompt = localStorage.getItem("showLoginPrompt");
             if (!getShowLoginPrompt) {
                 localStorage.setItem("showLoginPrompt", "true");
-                showError("Please log in to save your poop progress");
+                showPopupMessage("Please log in to save your poop progress");
             }
             let getPoopTotal = localStorage.getItem("poopTotal") || "0";
             let getFailedTotal = localStorage.getItem("failedTotal") || "0";
@@ -142,12 +156,12 @@ async function updateValue(isPoop, toAdd) {
         }
         // forbidden
         if (response.status === 403) {
-            showError("Failed to verify your access.");
+            showPopupMessage("Failed to verify your access.");
             return;
         }
         // server error
         if (response.status === 500) {
-            showError("Something went wrong with the server.");
+            showPopupMessage("Something went wrong with the server.");
             return;
         }
         return await response.json();
@@ -155,7 +169,7 @@ async function updateValue(isPoop, toAdd) {
         console.error(
             `Failed ${toAdd ? "add" : "subtract"} <${isPoop ? "poop" : "failed poop"}> value: ${err}`
         );
-        showError("Failed to update your poop :((");
+        showPopupMessage("Failed to update your poop :((");
         return;
     }
 }
@@ -222,6 +236,8 @@ async function fetchVal() {
         if (response.ok) {
             /** @type {UserInfo} */
             const data = await response.json();
+            localStorage.setItem("poopTotal", "0");
+            localStorage.setItem("failedTotal", "0");
             return data;
         } else if (response.status === 401) {
             const getPoopTotal = localStorage.getItem("poopTotal") || "0";
@@ -237,7 +253,7 @@ async function fetchVal() {
         }
     } catch (err) {
         console.error(err);
-        showError("Failed to get your poop data :((");
+        showPopupMessage("Failed to get your poop data :((");
         return undefined;
     }
 }
