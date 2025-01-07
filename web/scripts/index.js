@@ -105,10 +105,62 @@ function updatePoopCounter(val) {
 /**
  * @param {boolean} isPoop
  * @param {boolean} toAdd
+ * @returns {PoopInfo | undefined}
+ */
+function updateToLocalStorage(isPoop, toAdd) {
+    const getShowLoginPrompt = localStorage.getItem("showLoginPrompt");
+    if (!getShowLoginPrompt) {
+        localStorage.setItem("showLoginPrompt", "false");
+        showPopupMessage("Please log in to save your poop progress");
+    }
+    let getPoopTotal = localStorage.getItem("poopTotal") || "0";
+    let getFailedTotal = localStorage.getItem("failedTotal") || "0";
+
+    if (isPoop) {
+        if (toAdd) {
+            getPoopTotal = (parseInt(getPoopTotal) + 1).toString();
+            localStorage.setItem("poopTotal", getPoopTotal);
+        } else {
+            if (parseInt(getPoopTotal) < 1) {
+                return;
+            }
+            getPoopTotal = (parseInt(getPoopTotal) - 1).toString();
+            localStorage.setItem("poopTotal", getPoopTotal);
+        }
+    } else {
+        if (toAdd) {
+            getFailedTotal = (parseInt(getFailedTotal) + 1).toString();
+            localStorage.setItem("failedTotal", getFailedTotal);
+        } else {
+            if (parseInt(getFailedTotal) < 1) {
+                return;
+            }
+            getFailedTotal = (parseInt(getFailedTotal) - 1).toString();
+            localStorage.setItem("failedTotal", getFailedTotal);
+        }
+    }
+
+    /** @type {PoopInfo}*/
+    const val = {
+        poopTotal: parseInt(getPoopTotal),
+        failedTotal: parseInt(getFailedTotal),
+    };
+    return val;
+}
+
+/**
+ * @param {boolean} isPoop
+ * @param {boolean} toAdd
  * @returns {Promise<PoopInfo | undefined>}
  */
 async function updateValueToServer(isPoop, toAdd) {
+    // /** @returns {PoopInfo|undefined}*/
+
     try {
+        const isLoggedIn = localStorage.getItem("isLoggedIn");
+        if (isLoggedIn) {
+            return updateToLocalStorage(isPoop, toAdd);
+        }
         let fetchUrl = `http://localhost:8081/${isPoop ? "poop" : "poop/failed"}/${toAdd ? "add" : "sub"}`;
         const response = await fetch(fetchUrl, {
             method: "POST",
@@ -116,44 +168,7 @@ async function updateValueToServer(isPoop, toAdd) {
         });
         // unauthorized
         if (response.status === 401) {
-            const getShowLoginPrompt = localStorage.getItem("showLoginPrompt");
-            if (!getShowLoginPrompt) {
-                localStorage.setItem("showLoginPrompt", "false");
-                showPopupMessage("Please log in to save your poop progress");
-            }
-            let getPoopTotal = localStorage.getItem("poopTotal") || "0";
-            let getFailedTotal = localStorage.getItem("failedTotal") || "0";
-
-            if (isPoop) {
-                if (toAdd) {
-                    getPoopTotal = (parseInt(getPoopTotal) + 1).toString();
-                    localStorage.setItem("poopTotal", getPoopTotal);
-                } else {
-                    if (parseInt(getPoopTotal) < 1) {
-                        return;
-                    }
-                    getPoopTotal = (parseInt(getPoopTotal) - 1).toString();
-                    localStorage.setItem("poopTotal", getPoopTotal);
-                }
-            } else {
-                if (toAdd) {
-                    getFailedTotal = (parseInt(getFailedTotal) + 1).toString();
-                    localStorage.setItem("failedTotal", getFailedTotal);
-                } else {
-                    if (parseInt(getFailedTotal) < 1) {
-                        return;
-                    }
-                    getFailedTotal = (parseInt(getFailedTotal) - 1).toString();
-                    localStorage.setItem("failedTotal", getFailedTotal);
-                }
-            }
-
-            /** @type {PoopInfo}*/
-            const val = {
-                poopTotal: parseInt(getPoopTotal),
-                failedTotal: parseInt(getFailedTotal),
-            };
-            return val;
+            return updateToLocalStorage(isPoop, toAdd);
         }
         // forbidden
         if (response.status === 403) {
@@ -341,9 +356,11 @@ async function profile() {
         }
         profilePicContainer.style.display = "flex";
         googleSignIn.style.display = "none";
+        localStorage.removeItem("isLoggedIn");
     } else {
         profilePicContainer.style.display = "none";
         googleSignIn.style.display = "flex";
+        localStorage.setItem("isLoggedIn", "false");
     }
 
     profileContainer.addEventListener("click", () => {
