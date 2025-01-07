@@ -360,7 +360,9 @@ async function profile() {
 async function main() {
     let poopInfo = await profile();
     if (!poopInfo) {
-        poopInfo = { poopTotal: 0, failedTotal: 0 };
+        const poopTotal = parseInt(localStorage.getItem("poopTotal") || "0");
+        const failedTotal = parseInt(localStorage.getItem("failedTotal") || "0");
+        poopInfo = { poopTotal: poopTotal, failedTotal: failedTotal };
     }
     poop(poopInfo);
     failedPoop(poopInfo);
