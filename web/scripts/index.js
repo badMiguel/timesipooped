@@ -59,7 +59,9 @@ async function verifyStatus() {
             method: "GET",
             credentials: "include",
         });
-        if (response.status === 401) {
+        if (response.ok) {
+            return true;
+        } else if (response.status === 401) {
             const getShowLoginPrompt = localStorage.getItem("showLoginPrompt");
             if (!getShowLoginPrompt) {
                 localStorage.setItem("showLoginPrompt", "true");
@@ -74,11 +76,10 @@ async function verifyStatus() {
             return false;
         }
     } catch (err) {
-        console.log(err);
+        console.error(err);
         showPopupMessage("Failed to verify your access.");
-        return false;
     }
-    return true;
+    return false;
 }
 
 /** @param {number} val */
@@ -187,7 +188,6 @@ async function failedPoop() {
     }
     fPoopAddBtn.addEventListener("click", async () => {
         const val = await updateValue(false, true);
-        console.log(val);
         if (val) {
             updateFailedCounter(val.failedTotal);
         }
@@ -318,8 +318,8 @@ async function profile() {
     }
 
     const status = await verifyStatus();
+    await checkStorage();
     if (status) {
-        await checkStorage();
         const getPic = localStorage.getItem("picture");
         if (getPic !== null) {
             const image = new Image();
