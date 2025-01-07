@@ -233,7 +233,7 @@ async function fetchVal() {
                 localStorage.setItem("failedTotal", "0");
             }
             updatePoopCounter(parseInt(getPoopTotal));
-            updatePoopCounter(parseInt(getFailedTotal));
+            updateFailedCounter(parseInt(getFailedTotal));
         }
     } catch (err) {
         console.error(err);
