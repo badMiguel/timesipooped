@@ -173,7 +173,7 @@ func FetchData(db *sql.DB) http.HandlerFunc {
 		userIdCookie, err := r.Cookie("user_id")
 		if err != nil {
 			log.Printf("Error getting user_id cookie \nError:\n%v\n\n", err)
-			http.Error(w, "Failed to retrieve user id", http.StatusForbidden)
+			http.Error(w, "Failed to retrieve user id", http.StatusUnauthorized)
 			return
 		}
 

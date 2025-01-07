@@ -59,8 +59,12 @@ async function verifyStatus() {
             credentials: "include",
         });
         if (response.status === 401) {
-            showError("Please log in to save your poop progress");
-            return false;
+            const getShowLoginPrompt = localStorage.getItem("showLoginPrompt");
+            if (!getShowLoginPrompt) {
+                localStorage.setItem("showLoginPrompt", "true");
+                showError("Please log in to save your poop progress");
+                return false;
+            }
         } else if (response.status === 403) {
             showError("");
             return false;
@@ -172,7 +176,7 @@ async function poop() {
 async function loading() {}
 
 /**
- * @returns {Promise<UserInfo | null>}
+ * @returns {Promise<UserInfo | undefined>}
  */
 async function fetchVal() {
     try {
@@ -180,19 +184,32 @@ async function fetchVal() {
             method: "GET",
             credentials: "include",
         });
-        /** @type {UserInfo} */
-        const data = await response.json();
-        return data;
+        if (response.ok) {
+            /** @type {UserInfo} */
+            const data = await response.json();
+            return data;
+        } else if (response.status === 401) {
+            const getPoopTotal = localStorage.getItem("poopTotal") || "0";
+            const getFailedTotal = localStorage.getItem("failedTotal") || "0";
+            if (!getPoopTotal) {
+                localStorage.setItem("poopTotal", "0");
+            }
+            if (!getFailedTotal) {
+                localStorage.setItem("failedTotal", "0");
+            }
+            updatePoopCounter(parseInt(getPoopTotal));
+            updatePoopCounter(parseInt(getFailedTotal));
+        }
     } catch (err) {
         console.error(err);
-        showError();
-        return null;
+        showError("Failed to get your poop data :((");
+        return undefined;
     }
 }
 
 async function checkStorage() {
     const val = await fetchVal();
-    if (val === null) {
+    if (val === undefined) {
         return;
     }
 
