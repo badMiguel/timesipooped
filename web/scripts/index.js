@@ -1,6 +1,6 @@
 /**
  * @typedef {{ picture: string, poopTotal: number, failedTotal: number }} UserInfo
- * @typedef {{ poopTotal: number, failedTotal: number }} UpdatedPoop
+ * @typedef {{ poopTotal: number, failedTotal: number }} PoopInfo
  */
 
 /**
@@ -64,7 +64,7 @@ async function verifyStatus() {
         } else if (response.status === 401) {
             const getShowLoginPrompt = localStorage.getItem("showLoginPrompt");
             if (!getShowLoginPrompt) {
-                localStorage.setItem("showLoginPrompt", "true");
+                localStorage.setItem("showLoginPrompt", "false");
                 showPopupMessage(
                     "Please log in to save your poop progress on other devices",
                     "Hi new user!"
@@ -105,9 +105,9 @@ function updatePoopCounter(val) {
 /**
  * @param {boolean} isPoop
  * @param {boolean} toAdd
- * @returns {Promise<UpdatedPoop | undefined>}
+ * @returns {Promise<PoopInfo | undefined>}
  */
-async function updateValue(isPoop, toAdd) {
+async function updateValueToServer(isPoop, toAdd) {
     try {
         let fetchUrl = `http://localhost:8081/${isPoop ? "poop" : "poop/failed"}/${toAdd ? "add" : "sub"}`;
         const response = await fetch(fetchUrl, {
@@ -118,7 +118,7 @@ async function updateValue(isPoop, toAdd) {
         if (response.status === 401) {
             const getShowLoginPrompt = localStorage.getItem("showLoginPrompt");
             if (!getShowLoginPrompt) {
-                localStorage.setItem("showLoginPrompt", "true");
+                localStorage.setItem("showLoginPrompt", "false");
                 showPopupMessage("Please log in to save your poop progress");
             }
             let getPoopTotal = localStorage.getItem("poopTotal") || "0";
@@ -148,7 +148,7 @@ async function updateValue(isPoop, toAdd) {
                 }
             }
 
-            /** @type {UpdatedPoop}*/
+            /** @type {PoopInfo}*/
             const val = {
                 poopTotal: parseInt(getPoopTotal),
                 failedTotal: parseInt(getFailedTotal),
@@ -175,7 +175,8 @@ async function updateValue(isPoop, toAdd) {
     }
 }
 
-async function failedPoop() {
+/** @param {PoopInfo} poopInfo */
+async function failedPoop(poopInfo) {
     const fPoopAddBtn = document.querySelector(".failed-poop-add--button");
     if (!(fPoopAddBtn instanceof HTMLParagraphElement)) {
         console.error(`failed to find failed-poop-add--button element.`);
@@ -187,20 +188,21 @@ async function failedPoop() {
         return;
     }
     fPoopAddBtn.addEventListener("click", async () => {
-        const val = await updateValue(false, true);
-        if (val) {
-            updateFailedCounter(val.failedTotal);
-        }
+        updateValueToServer(false, true);
+        poopInfo.failedTotal++;
+        updateFailedCounter(poopInfo.failedTotal);
     });
     fPoopSubBtn.addEventListener("click", async () => {
-        const val = await updateValue(false, false);
-        if (val) {
-            updateFailedCounter(val.failedTotal);
+        if (poopInfo.failedTotal > 0) {
+            updateValueToServer(false, false);
+            poopInfo.failedTotal--;
+            updateFailedCounter(poopInfo.failedTotal);
         }
     });
 }
 
-async function poop() {
+/** @param {PoopInfo} poopInfo */
+async function poop(poopInfo) {
     const poopAddBtn = document.querySelector(".poop-add--button");
     if (!(poopAddBtn instanceof HTMLParagraphElement)) {
         console.error(`failed to find poop-add--button element.`);
@@ -213,15 +215,15 @@ async function poop() {
     }
 
     poopAddBtn.addEventListener("click", async () => {
-        const val = await updateValue(true, true);
-        if (val) {
-            updatePoopCounter(val.poopTotal);
-        }
+        updateValueToServer(true, true);
+        poopInfo.poopTotal++;
+        updatePoopCounter(poopInfo.poopTotal);
     });
     poopSubBtn.addEventListener("click", async () => {
-        const val = await updateValue(true, false);
-        if (val) {
-            updatePoopCounter(val.poopTotal);
+        if (poopInfo.poopTotal > 0) {
+            updateValueToServer(true, false);
+            poopInfo.poopTotal--;
+            updatePoopCounter(poopInfo.poopTotal);
         }
     });
 }
@@ -258,6 +260,7 @@ async function fetchVal() {
     }
 }
 
+/** @returns {Promise<PoopInfo|undefined>}*/
 async function checkStorage() {
     const val = await fetchVal();
     if (val === undefined) {
@@ -276,6 +279,7 @@ async function checkStorage() {
         localStorage.setItem("picture", val.picture);
         return;
     }
+    return { poopTotal: val.poopTotal, failedTotal: val.failedTotal };
 }
 
 /** @returns {boolean} */
@@ -295,6 +299,7 @@ function isPictureExpired() {
     return false;
 }
 
+/** @returns {Promise<PoopInfo|undefined>} */
 async function profile() {
     const profileContainer = document.querySelector(".profile--container");
     if (!(profileContainer instanceof HTMLDivElement)) {
@@ -318,7 +323,7 @@ async function profile() {
     }
 
     const status = await verifyStatus();
-    await checkStorage();
+    const poopInfo = await checkStorage();
     if (status) {
         const getPic = localStorage.getItem("picture");
         if (getPic !== null) {
@@ -348,12 +353,17 @@ async function profile() {
             // TODO add sign out
         }
     });
+
+    return poopInfo;
 }
 
 async function main() {
-    profile();
-    poop();
-    failedPoop();
+    let poopInfo = await profile();
+    if (!poopInfo) {
+        poopInfo = { poopTotal: 0, failedTotal: 0 };
+    }
+    poop(poopInfo);
+    failedPoop(poopInfo);
 }
 
 document.addEventListener("DOMContentLoaded", () => {
