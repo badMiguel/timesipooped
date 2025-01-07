@@ -365,18 +365,17 @@ async function profile() {
     if (status) {
         const getPic = localStorage.getItem("picture");
         if (getPic !== null) {
-            // const image = new Image();
-            // const cacheBustedSrc = `${getPic}?t=${new Date().getTime()}`;
-            // if (isPictureExpired()) {
-            //     image.src = cacheBustedSrc;
-            //     image.onload = () => {
-            //         profilePic.src = image.src;
-            //         localStorage.setItem("picture", image.src);
-            //     };
-            // } else {
-            //     profilePic.src = getPic;
-            // }
-            // TODO UNCOMMENT
+            const image = new Image();
+            const cacheBustedSrc = `${getPic}?t=${new Date().getTime()}`;
+            if (isPictureExpired()) {
+                image.src = cacheBustedSrc;
+                image.onload = () => {
+                    profilePic.src = image.src;
+                    localStorage.setItem("picture", image.src);
+                };
+            } else {
+                profilePic.src = getPic;
+            }
         }
         profilePicContainer.style.display = "flex";
         googleSignIn.style.display = "none";

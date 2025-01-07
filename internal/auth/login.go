@@ -149,7 +149,7 @@ func HandleCallback(authConf *OAuthConfig, db *sql.DB) http.HandlerFunc {
 	}
 }
 
-func refreshAccessToken(w http.ResponseWriter, userId string, authConf *OAuthConfig, db *sql.DB) error {
+func RefreshAccessToken(w http.ResponseWriter, userId string, authConf *OAuthConfig, db *sql.DB) error {
 	log.Println("Initiating access token refresh...")
 	var refreshToken string
 	for i := 0; i < 10; i++ {
@@ -270,7 +270,7 @@ func HandleStatus(authConf *OAuthConfig, db *sql.DB) http.HandlerFunc {
 			log.Printf("Invalid access token of user <%v>\n", user_id)
 			log.Println("Will attempt to refresh access token")
 
-			err := refreshAccessToken(w, user_id, authConf, db)
+			err := RefreshAccessToken(w, user_id, authConf, db)
 			if err != nil {
 				logoutHelper(w)
 				log.Println(err)
