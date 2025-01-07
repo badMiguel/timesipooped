@@ -111,7 +111,10 @@ function updateToLocalStorage(isPoop, toAdd) {
     const getShowLoginPrompt = localStorage.getItem("showLoginPrompt");
     if (!getShowLoginPrompt) {
         localStorage.setItem("showLoginPrompt", "false");
-        showPopupMessage("Please log in to save your poop progress");
+        showPopupMessage(
+            "Please log in to save your poop progress on other devices",
+            "Hi new user!"
+        );
     }
     let getPoopTotal = localStorage.getItem("poopTotal") || "0";
     let getFailedTotal = localStorage.getItem("failedTotal") || "0";
@@ -286,13 +289,8 @@ async function checkStorage() {
     updateFailedCounter(val.failedTotal);
 
     const getPicture = localStorage.getItem("picture");
-    if (getPicture === null) {
+    if (getPicture === null || getPicture != val.picture) {
         localStorage.setItem("picture", val.picture);
-        return;
-    }
-    if (getPicture !== val.picture) {
-        localStorage.setItem("picture", val.picture);
-        return;
     }
     return { poopTotal: val.poopTotal, failedTotal: val.failedTotal };
 }
@@ -313,8 +311,6 @@ function isPictureExpired() {
     }
     return false;
 }
-
-async function requestLogout() {}
 
 /** @returns {Promise<PoopInfo|undefined>} */
 async function profile() {
@@ -353,11 +349,6 @@ async function profile() {
         console.error(`failed to find logout--button-container element.`);
         return;
     }
-    const logoutButton = document.querySelector(".logout--button");
-    if (!(logoutButton instanceof HTMLParagraphElement)) {
-        console.error(`failed to find logout--button element.`);
-        return;
-    }
     const mainElement = document.querySelector("body");
     if (!(mainElement instanceof HTMLBodyElement)) {
         console.error(`failed to find logout--button element.`);
@@ -369,22 +360,24 @@ async function profile() {
         return;
     }
 
-    const status = await verifyStatus();
+    let status = await verifyStatus();
     const poopInfo = await checkStorage();
+    console.log(poopInfo, "first");
     if (status) {
         const getPic = localStorage.getItem("picture");
         if (getPic !== null) {
-            const image = new Image();
-            const cacheBustedSrc = `${getPic}?t=${new Date().getTime()}`;
-            if (isPictureExpired()) {
-                image.src = cacheBustedSrc;
-                image.onload = () => {
-                    profilePic.src = image.src;
-                    localStorage.setItem("picture", image.src);
-                };
-            } else {
-                profilePic.src = getPic;
-            }
+            // const image = new Image();
+            // const cacheBustedSrc = `${getPic}?t=${new Date().getTime()}`;
+            // if (isPictureExpired()) {
+            //     image.src = cacheBustedSrc;
+            //     image.onload = () => {
+            //         profilePic.src = image.src;
+            //         localStorage.setItem("picture", image.src);
+            //     };
+            // } else {
+            //     profilePic.src = getPic;
+            // }
+            // TODO UNCOMMENT
         }
         profilePicContainer.style.display = "flex";
         googleSignIn.style.display = "none";
@@ -396,7 +389,6 @@ async function profile() {
     }
 
     profileContainer.addEventListener("click", () => {
-        console.log(status);
         if (!status) {
             window.location.href = "http://localhost:8081/auth/login";
         } else {
@@ -424,11 +416,43 @@ async function profile() {
         errorBlur.style.zIndex = "2";
     });
 
+    logoutButtonContainer.addEventListener("click", async () => {
+        /** @type {Response|undefined} */
+        let response = undefined;
+        try {
+            response = await fetch("http://localhost:8081/auth/logout", {
+                credentials: "include",
+            });
+        } catch (err) {
+            showPopupMessage("Server failed to log you out", "Waaaaaaa!");
+            console.error(err);
+        }
+
+        if (response && response.ok) {
+            profilePicContainer.style.display = "none";
+            googleSignIn.style.display = "flex";
+
+            localStorage.clear();
+            localStorage.setItem("isLoggedIn", "false");
+            localStorage.setItem("showLoginPrompt", "false");
+            location.reload();
+        }
+
+        if (response && !response.ok) {
+            showPopupMessage("Server failed to log you out", "Waaaaaaa!");
+        }
+
+        logoutContainer.style.display = "none";
+        errorBlur.style.visibility = "hidden";
+        errorBlur.style.zIndex = "2";
+    });
+
     return poopInfo;
 }
 
 async function main() {
     let poopInfo = await profile();
+    console.log(poopInfo);
     if (!poopInfo) {
         const poopTotal = parseInt(localStorage.getItem("poopTotal") || "0");
         const failedTotal = parseInt(localStorage.getItem("failedTotal") || "0");

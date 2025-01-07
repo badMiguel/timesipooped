@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"time"
 
 	_ "github.com/mattn/go-sqlite3"
 	"timesipooped.fyi/internal/database"
@@ -48,6 +49,7 @@ func HandleLogin(authConf *OAuthConfig) http.HandlerFunc {
 }
 
 func generateCookie(name string, val string) *http.Cookie {
+	log.Println(name, val)
 	return &http.Cookie{
 		Name:     name,
 		Value:    val,
@@ -147,6 +149,10 @@ func HandleCallback(authConf *OAuthConfig, db *sql.DB) http.HandlerFunc {
 	}
 }
 
+// TODO
+func refreshAccessToken() {
+}
+
 func VerifyToken(r *http.Request) (*http.Response, string, error) {
 	user_id, err := r.Cookie("user_id")
 	if err != nil {
@@ -182,9 +188,29 @@ func HandleStatus(authConf *OAuthConfig) http.HandlerFunc {
 		}
 
 		if resp.StatusCode != http.StatusOK {
-			log.Printf("Invalid access token of user <%v>\nError:\n%v\n\n", user_id, err)
+			log.Printf("Invalid access token of user <%v>\n", user_id)
 			w.WriteHeader(http.StatusForbidden)
 			return
 		}
 	}
+}
+
+func HandleLogout(w http.ResponseWriter, r *http.Request) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     "access_token",
+		Value:    "",
+		Secure:   false, // TODO TRUE IN PROD
+		HttpOnly: true,
+		Expires:  time.Unix(0, 0),
+		Path:     "/",
+	})
+	http.SetCookie(w, &http.Cookie{
+		Name:     "user_id",
+		Value:    "",
+		Secure:   false, // TODO TRUE IN PROD
+		HttpOnly: true,
+		Expires:  time.Unix(0, 0),
+		Path:     "/",
+	})
+	w.WriteHeader(http.StatusOK)
 }
