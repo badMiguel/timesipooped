@@ -1,14 +1,6 @@
 /**
- * @typedef {{
- * picture: string,
- * poopTotal: number,
- * failedTotal: number,
- * }} UserInfo
- *
- * @typedef {{
- * poopTotal: number
- * failedTotal: number
- * }} UpdatedPoop
+ * @typedef {{ picture: string, poopTotal: number, failedTotal: number }} UserInfo
+ * @typedef {{ poopTotal: number, failedTotal: number }} UpdatedPoop
  */
 
 /** @param {string} error */
@@ -49,9 +41,7 @@ function showError(error) {
     });
 }
 
-/**
- * @returns {Promise<boolean>}
- */
+/** @returns {Promise<boolean>} */
 async function verifyStatus() {
     try {
         const response = await fetch("http://localhost:8081/auth/status", {
@@ -222,11 +212,7 @@ async function poop() {
     });
 }
 
-async function loading() { }
-
-/**
- * @returns {Promise<UserInfo | undefined>}
- */
+/** @returns {Promise<UserInfo | undefined>} */
 async function fetchVal() {
     try {
         const response = await fetch("http://localhost:8081/get/user", {
