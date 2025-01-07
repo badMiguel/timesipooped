@@ -314,6 +314,8 @@ function isPictureExpired() {
     return false;
 }
 
+async function requestLogout() {}
+
 /** @returns {Promise<PoopInfo|undefined>} */
 async function profile() {
     const profileContainer = document.querySelector(".profile--container");
@@ -334,6 +336,36 @@ async function profile() {
     const googleSignIn = document.querySelector(".google-sign-in");
     if (!(googleSignIn instanceof HTMLDivElement)) {
         console.error(`failed to find google-sign-in element.`);
+        return;
+    }
+    const logoutContainer = document.querySelector(".logout--container");
+    if (!(logoutContainer instanceof HTMLDivElement)) {
+        console.error(`failed to find logout--container element.`);
+        return;
+    }
+    const logoutClose = document.querySelector(".logout--close");
+    if (!(logoutClose instanceof HTMLParagraphElement)) {
+        console.error(`failed to find logout--close element.`);
+        return;
+    }
+    const logoutButtonContainer = document.querySelector(".logout--button-container");
+    if (!(logoutButtonContainer instanceof HTMLDivElement)) {
+        console.error(`failed to find logout--button-container element.`);
+        return;
+    }
+    const logoutButton = document.querySelector(".logout--button");
+    if (!(logoutButton instanceof HTMLParagraphElement)) {
+        console.error(`failed to find logout--button element.`);
+        return;
+    }
+    const mainElement = document.querySelector("body");
+    if (!(mainElement instanceof HTMLBodyElement)) {
+        console.error(`failed to find logout--button element.`);
+        return;
+    }
+    const errorBlur = document.querySelector(".error--blur");
+    if (!(errorBlur instanceof HTMLDivElement)) {
+        console.error(`failed to find error--blur element.`);
         return;
     }
 
@@ -364,11 +396,32 @@ async function profile() {
     }
 
     profileContainer.addEventListener("click", () => {
+        console.log(status);
         if (!status) {
             window.location.href = "http://localhost:8081/auth/login";
         } else {
-            // TODO add sign out
+            if (logoutContainer.style.display === "flex") {
+                logoutContainer.style.display = "none";
+                errorBlur.style.visibility = "hidden";
+                errorBlur.style.zIndex = "2";
+            } else {
+                logoutContainer.style.display = "flex";
+                errorBlur.style.visibility = "visible";
+                errorBlur.style.zIndex = "1";
+            }
         }
+    });
+
+    logoutClose.addEventListener("click", () => {
+        logoutContainer.style.display = "none";
+        errorBlur.style.visibility = "hidden";
+        errorBlur.style.zIndex = "2";
+    });
+
+    errorBlur.addEventListener("click", () => {
+        logoutContainer.style.display = "none";
+        errorBlur.style.visibility = "hidden";
+        errorBlur.style.zIndex = "2";
     });
 
     return poopInfo;

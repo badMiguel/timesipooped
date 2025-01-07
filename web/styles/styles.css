@@ -163,11 +163,12 @@ main {
     margin-top: 55px;
     background-color: var(--secondary);
     border-radius: 0.3rem;
-    display: flex;
+    display: none;
     flex-direction: column;
 }
 
 .logout--close {
+    cursor: pointer;
     align-self: flex-end;
     font-weight: 700;
     font-size: 0.9rem;
@@ -175,6 +176,7 @@ main {
 }
 
 .logout--button-container {
+    cursor: pointer;
     display: flex;
     gap: 0.5rem;
     align-items: center;
