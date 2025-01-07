@@ -66,12 +66,12 @@ async function verifyStatus() {
                 return false;
             }
         } else if (response.status === 403) {
-            showError("");
+            showError("Failed to verify your access.");
             return false;
         }
     } catch (err) {
         console.log(err);
-        showError();
+        showError("Failed to verify your access.");
         return false;
     }
     return true;
@@ -222,7 +222,7 @@ async function poop() {
     });
 }
 
-async function loading() {}
+async function loading() { }
 
 /**
  * @returns {Promise<UserInfo | undefined>}
