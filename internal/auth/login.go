@@ -10,7 +10,7 @@ import (
 	"os"
 	"time"
 
-	_ "github.com/mattn/go-sqlite3"
+    _ "modernc.org/sqlite"
 	"timesipooped.fyi/internal/database"
 )
 
@@ -49,12 +49,15 @@ func HandleLogin(authConf *OAuthConfig) http.HandlerFunc {
 }
 
 func generateCookie(name string, val string) *http.Cookie {
-	log.Println(name, val)
+	var isSecure bool
+	if os.Getenv("IS_SECURE") == "true" {
+		isSecure = true
+	}
 	return &http.Cookie{
 		Name:     name,
 		Value:    val,
 		HttpOnly: true,
-		Secure:   false, // TODO TRUE IN PROD
+		Secure:   isSecure,
 		SameSite: http.SameSiteStrictMode,
 		Path:     "/",
 	}
@@ -212,10 +215,15 @@ func RefreshAccessToken(w http.ResponseWriter, userId string, authConf *OAuthCon
 }
 
 func logoutHelper(w http.ResponseWriter) {
+	var isSecure bool
+	if os.Getenv("IS_SECURE") == "true" {
+		isSecure = true
+	}
+
 	http.SetCookie(w, &http.Cookie{
 		Name:     "access_token",
 		Value:    "",
-		Secure:   false, // TODO TRUE IN PROD
+		Secure:   isSecure,
 		HttpOnly: true,
 		Expires:  time.Unix(0, 0),
 		Path:     "/",
@@ -223,7 +231,7 @@ func logoutHelper(w http.ResponseWriter) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     "user_id",
 		Value:    "",
-		Secure:   false, // TODO TRUE IN PROD
+		Secure:   isSecure,
 		HttpOnly: true,
 		Expires:  time.Unix(0, 0),
 		Path:     "/",
@@ -233,17 +241,17 @@ func logoutHelper(w http.ResponseWriter) {
 func VerifyToken(r *http.Request) (*http.Response, string, error) {
 	user_id, err := r.Cookie("user_id")
 	if err != nil {
-		return nil, "", fmt.Errorf("Error getting user_id cookie \nError:\n%v\n\n", err)
+        return nil, "", fmt.Errorf("Error getting user_id cookie: %v\n", err)
 	}
 
 	accessTokenCookie, err := r.Cookie("access_token")
 	if err != nil {
-		return nil, "", fmt.Errorf("Error getting access_token of user <%v>\nError:\n%v\n\n", user_id, err)
+		return nil, "", fmt.Errorf("Error getting access_token of user <%v>: %v\n", user_id, err)
 	}
 
 	resp, err := http.Get("https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=" + accessTokenCookie.Value)
 	if err != nil {
-		return nil, "", fmt.Errorf("Error verifying access token of user <%v>\nError:\n%v\n\n", user_id, err)
+		return nil, "", fmt.Errorf("Error verifying access token of user <%v>: %v\n", user_id, err)
 	}
 	defer resp.Body.Close()
 

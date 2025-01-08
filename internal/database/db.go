@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"time"
 
-	_ "github.com/mattn/go-sqlite3"
+    _ "modernc.org/sqlite"
 )
 
 type UserSchema struct {
@@ -104,7 +104,7 @@ func addUser(db *sql.DB, userInfo *UserInfo, accessToken, refreshToken string) e
 		if err != nil {
 			log.Printf("Error adding new user to DB... Trying again (%d)", i)
 			if i == 9 {
-				return fmt.Errorf("Failed adding new user to database\nError:\n%v\n\n", err)
+				return fmt.Errorf("Failed adding new user to database: %v\n", err)
 			}
 			time.Sleep(time.Duration(i/2) * time.Second)
 			continue
@@ -134,7 +134,7 @@ func updateDetails(db *sql.DB, userInfo *UserInfo, accessToken, refreshToken str
 		if err != nil {
 			log.Printf("Error updating user details... Trying again (%d)", i)
 			if i == 9 {
-				return fmt.Errorf("Failed updating user data to database\nError:\n%v\n\n", err)
+				return fmt.Errorf("Failed updating user data to database: %v\n", err)
 			}
 			time.Sleep(time.Duration(i/2) * time.Second)
 			continue
@@ -172,7 +172,7 @@ func FetchData(db *sql.DB) http.HandlerFunc {
 
 		userIdCookie, err := r.Cookie("user_id")
 		if err != nil {
-			log.Printf("Error getting user_id cookie \nError:\n%v\n\n", err)
+			log.Printf("Error getting user_id cookie: %v\n", err)
 			http.Error(w, "Failed to retrieve user id", http.StatusUnauthorized)
 			return
 		}

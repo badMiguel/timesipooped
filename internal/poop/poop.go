@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	_ "github.com/mattn/go-sqlite3"
+    _ "modernc.org/sqlite"
 	"timesipooped.fyi/internal/auth"
 )
 

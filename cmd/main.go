@@ -11,7 +11,7 @@ import (
 	"timesipooped.fyi/internal/database"
 	"timesipooped.fyi/internal/poop"
 
-	_ "github.com/mattn/go-sqlite3"
+    _ "modernc.org/sqlite"
 
 	// todo remove on production
 	"github.com/joho/godotenv"
@@ -39,7 +39,7 @@ func main() {
 		panic(err)
 	}
 
-	db, err := sql.Open("sqlite3", "../internal/database/db.sqlite3")
+	db, err := sql.Open("sqlite", "../internal/database/db.sqlite")
 	if err != nil {
 		panic(fmt.Sprintf("Error opening/creating sqlite3 file: %v\n", err))
 	}
