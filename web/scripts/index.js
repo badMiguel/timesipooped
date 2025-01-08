@@ -417,6 +417,10 @@ async function profile() {
     });
 
     logoutButtonContainer.addEventListener("click", async () => {
+        logoutContainer.style.display = "none";
+        errorBlur.style.visibility = "hidden";
+        errorBlur.style.zIndex = "2";
+
         /** @type {Response|undefined} */
         let response = undefined;
         try {
@@ -441,10 +445,6 @@ async function profile() {
         if (response && !response.ok) {
             showPopupMessage("Server failed to log you out", "Waaaaaaa!");
         }
-
-        logoutContainer.style.display = "none";
-        errorBlur.style.visibility = "hidden";
-        errorBlur.style.zIndex = "2";
     });
 
     return poopInfo;
