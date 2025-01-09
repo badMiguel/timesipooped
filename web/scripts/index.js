@@ -362,9 +362,8 @@ async function profile() {
 
     let status = await verifyStatus();
     /** @type {PoopInfo | undefined}*/
-    let poopInfo;
+    const poopInfo = await checkStorage();
     if (status) {
-        poopInfo = await checkStorage();
         const getPic = localStorage.getItem("picture");
         if (getPic !== null) {
             const image = new Image();
