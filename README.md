@@ -1,3 +1,4 @@
 # timesipooped
 
-times i pooped counter
+my girlfriend wanted to count how many times she'll poop in 2025. this website
+does exactly just that.
