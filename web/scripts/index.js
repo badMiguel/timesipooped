@@ -24,7 +24,7 @@ function showPopupMessage(desc, header) {
         return;
     }
     const errorClose = document.querySelector(".error--close");
-    if (!(errorClose instanceof HTMLParagraphElement)) {
+    if (!(errorClose instanceof HTMLDivElement)) {
         console.error(`failed to find error--close element.`);
         return;
     }
@@ -340,7 +340,7 @@ async function profile() {
         return;
     }
     const logoutClose = document.querySelector(".logout--close");
-    if (!(logoutClose instanceof HTMLParagraphElement)) {
+    if (!(logoutClose instanceof HTMLDivElement)) {
         console.error(`failed to find logout--close element.`);
         return;
     }
