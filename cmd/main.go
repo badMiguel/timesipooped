@@ -12,9 +12,8 @@ import (
 	"timesipooped.fyi/internal/poop"
 
 	_ "modernc.org/sqlite"
-
-	// todo remove on production
-	"github.com/joho/godotenv"
+	// // todo remove on production
+	// "github.com/joho/godotenv"
 )
 
 func corsMiddleware(next http.Handler) http.Handler {
@@ -39,12 +38,12 @@ func corsMiddleware(next http.Handler) http.Handler {
 }
 
 func main() {
-	err := godotenv.Load("../.env")
-	if err != nil {
-		panic(err)
-	}
+	// err := godotenv.Load("../.env")
+	// if err != nil {
+	// 	panic(err)
+	// }
 
-	db, err := sql.Open("sqlite", "../internal/database/db.sqlite")
+	db, err := sql.Open("sqlite", os.Getenv("DB_PATH"))
 	if err != nil {
 		panic(fmt.Sprintf("Error opening/creating sqlite3 file: %v\n", err))
 	}

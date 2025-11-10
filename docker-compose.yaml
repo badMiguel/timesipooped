@@ -1,0 +1,9 @@
+services:
+  api:
+    build: .
+    env_file:
+      - .env
+    ports:
+      - "${SERVER_PORT}:8001"
+    volumes:
+      - ${HOST_DB_PATH}:/app/db.sqlite
