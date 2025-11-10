@@ -55,7 +55,7 @@ function showPopupMessage(desc, header) {
 /** @returns {Promise<boolean>} */
 async function verifyStatus() {
     try {
-        const response = await fetch("http://localhost:8081/auth/status", {
+        const response = await fetch("http://localhost:8001/auth/status", {
             method: "GET",
             credentials: "include",
         });
@@ -164,7 +164,7 @@ async function updateValueToServer(isPoop, toAdd) {
         if (isLoggedIn) {
             return updateToLocalStorage(isPoop, toAdd);
         }
-        let fetchUrl = `http://localhost:8081/${isPoop ? "poop" : "poop/failed"}/${toAdd ? "add" : "sub"}`;
+        let fetchUrl = `http://localhost:8001/${isPoop ? "poop" : "poop/failed"}/${toAdd ? "add" : "sub"}`;
         const response = await fetch(fetchUrl, {
             method: "POST",
             credentials: "include",
@@ -249,7 +249,7 @@ async function poop(poopInfo) {
 /** @returns {Promise<UserInfo | undefined>} */
 async function fetchVal() {
     try {
-        const response = await fetch("http://localhost:8081/get/user", {
+        const response = await fetch("http://localhost:8001/get/user", {
             method: "GET",
             credentials: "include",
         });
@@ -389,7 +389,7 @@ async function profile() {
 
     profileContainer.addEventListener("click", () => {
         if (!status) {
-            window.location.href = "http://localhost:8081/auth/login";
+            window.location.href = "http://localhost:8001/auth/login";
         } else {
             if (logoutContainer.style.display === "flex") {
                 logoutContainer.style.display = "none";
@@ -423,7 +423,7 @@ async function profile() {
         /** @type {Response|undefined} */
         let response = undefined;
         try {
-            response = await fetch("http://localhost:8081/auth/logout", {
+            response = await fetch("http://localhost:8001/auth/logout", {
                 credentials: "include",
             });
         } catch (err) {
