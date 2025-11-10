@@ -10,7 +10,7 @@ import (
 	"os"
 	"time"
 
-    _ "modernc.org/sqlite"
+	_ "modernc.org/sqlite"
 	"timesipooped.fyi/internal/database"
 )
 
@@ -78,7 +78,6 @@ func HandleCallback(authConf *OAuthConfig, db *sql.DB) http.HandlerFunc {
 			"redirect_uri":  {authConf.RedirectURI},
 			"grant_type":    {"authorization_code"},
 		})
-
 		if err != nil {
 			log.Printf("Error exchanging code for token: %v\n", err)
 			http.Error(w, "Failed to exchange code", http.StatusInternalServerError)
@@ -141,7 +140,12 @@ func HandleCallback(authConf *OAuthConfig, db *sql.DB) http.HandlerFunc {
 
 		http.SetCookie(w, generateCookie("access_token", accessToken))
 		http.SetCookie(w, generateCookie("user_id", info.Id))
-		http.Redirect(w, r, "http://localhost:8080", http.StatusSeeOther)
+
+		clientUrl := "https://poop.badmiguel.com"
+		if os.Getenv("IS_DEVELOPMENT") == "true" {
+			clientUrl = "http://localhost:8000"
+		}
+		http.Redirect(w, r, clientUrl, http.StatusSeeOther)
 
 		err = database.IsNewUser(db, &info, refreshToken, accessToken)
 		if err != nil {
@@ -159,7 +163,6 @@ func RefreshAccessToken(w http.ResponseWriter, userId string, authConf *OAuthCon
 		err := db.QueryRow(
 			`SELECT refreshToken FROM users WHERE userId = ?;`, userId,
 		).Scan(&refreshToken)
-
 		if err != nil {
 			log.Printf("Error when querying user <%s>... Trying again(%d)", userId, i)
 			if i == 9 {
@@ -241,7 +244,7 @@ func logoutHelper(w http.ResponseWriter) {
 func VerifyToken(r *http.Request) (*http.Response, string, error) {
 	user_id, err := r.Cookie("user_id")
 	if err != nil {
-        return nil, "", fmt.Errorf("Error getting user_id cookie: %v\n", err)
+		return nil, "", fmt.Errorf("Error getting user_id cookie: %v\n", err)
 	}
 
 	accessTokenCookie, err := r.Cookie("access_token")

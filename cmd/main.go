@@ -11,7 +11,7 @@ import (
 	"timesipooped.fyi/internal/database"
 	"timesipooped.fyi/internal/poop"
 
-    _ "modernc.org/sqlite"
+	_ "modernc.org/sqlite"
 
 	// todo remove on production
 	"github.com/joho/godotenv"
@@ -19,7 +19,12 @@ import (
 
 func corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "http://localhost:8080")
+		clientUrl := "https://poop.badmiguel.com"
+		if os.Getenv("IS_DEVELOPMENT") == "true" {
+			clientUrl = "http://localhost:8000"
+		}
+
+		w.Header().Set("Access-Control-Allow-Origin", clientUrl)
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, Cookie")
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
